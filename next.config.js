@@ -1,7 +1,9 @@
-module.exports = {
-  reactStrictMode: true,
-  swcMinify: true,
+const nextConfig = {
   images: {
-    domains: ['example.com'], // Add your image domains here
-  },
+    remotePatterns: [
+      { protocol: 'https', hostname: '**' }
+    ]
+  }
 };
+
+module.exports = nextConfig;

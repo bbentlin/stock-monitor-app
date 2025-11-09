@@ -1,40 +1,58 @@
-import React from 'react';
-import { Line } from 'react-chartjs-2';
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend } from 'chart.js';
-import { usePortfolio } from '../../../lib/hooks/usePortfolio';
+import React from "react";
+import { Line } from "react-chartjs-2";
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend } from "chart.js";
+import { usePortfolio } from "@/lib/hooks/usePortfolio";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
 const PerformanceChart: React.FC = () => {
-    const { portfolio } = usePortfolio();
+  const { portfolio } = usePortfolio();
 
-    const data = {
-        labels: portfolio.map(stock => stock.date), // Assuming stock.date exists
-        datasets: [
-            {
-                label: 'Portfolio Performance',
-                data: portfolio.map(stock => stock.value), // Assuming stock.value exists
-                borderColor: 'rgba(75, 192, 192, 1)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                fill: true,
-            },
-        ],
-    };
+  interface StockData {
+    date: string;
+    value: number;
+  }
 
-    const options = {
-        responsive: true,
-        plugins: {
-            legend: {
-                position: 'top' as const,
-            },
-            title: {
-                display: true,
-                text: 'Stock Portfolio Performance',
-            },
+  interface ChartDataset {
+    label: string;
+    data: number[];
+    borderColor: string;
+    backgroundColor: string;
+    fill: boolean;
+  }
+
+  interface ChartData {
+    labels: string[];
+    datasets: ChartDataset[];
+  }
+
+    const data: ChartData = {
+      labels: portfolio.map((stock: StockData) => stock.date), // Assuming stock.date exists
+      datasets: [
+        {
+          label: "Portfolio Performance",
+          data: portfolio.map((stock: StockData) => stock.value), // Assuming stock.value exists
+          borderColor: "rgba(75, 192, 192, 1)",
+          backgroundColor: "rgba(75, 192, 192, 0.2)",
+          fill: true,
         },
+      ],
     };
 
-    return <Line options={options} data={data} />;
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: "top" as const,
+      },
+      title: {
+        display: true,
+        text: "Stock Portfolio Performance",
+      },
+    },
+  };
+
+  return <Line options={options} data={data} />;
 };
 
 export default PerformanceChart;

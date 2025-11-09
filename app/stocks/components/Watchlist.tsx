@@ -1,5 +1,5 @@
-import React from 'react';
-import { Stock } from '../../../types/stock';
+import React from "react";
+import { Stock } from "@/types/stock";
 
 interface WatchlistProps {
   stocks: Stock[];
