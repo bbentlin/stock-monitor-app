@@ -3,9 +3,10 @@ import { Holding } from "@/lib/hooks/useHoldings";
 
 interface HoldingsTableProps {
   holdings: Holding[];
+  onRemove?: (symbol: string) => void;
 }
 
-const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings }) => {
+const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => {
   return (
     <div className="overflow-x-auto">
       <h2 className="text-2xl font-bold text-white mb-4">Holdings</h2>
@@ -33,6 +34,16 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings }) => {
               <td className={`py-3 px-4 border-b border-gray-700 text-right font-semibold ${holding.gainLoss >= 0 ? 'text-green-500' : 'text-red-500'} `}>
                 ${holding.gainLoss.toFixed(2)} ({holding.gainLossPercent.toFixed(2)}%)
               </td>
+              {onRemove && (
+                <td className="py-3 px-4 border-b border-gray-700 text-center">
+                  <button
+                    onClick={() => onRemove(holding.symbol)}
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors"
+                  >
+                    Remove
+                  </button>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
