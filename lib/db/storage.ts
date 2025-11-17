@@ -98,5 +98,6 @@ export const addToWatchlist = (stock: WatchlistStock): WatchlistStock[] => {
 
 export const removeFromWatchlist = (symbol: string): WatchlistStock[] => {
   const watchlist = getWatchlist().filter(s => s.symbol !== symbol);
+  saveWatchlist(watchlist);
   return watchlist;
 };

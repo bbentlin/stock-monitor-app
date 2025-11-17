@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Holding } from "@/lib/hooks/useHoldings";
+import { useStockSearch } from "@/lib/hooks/useStockSearch";
+import { useStockQuote } from "@/lib/hooks/useStockQuote";
 
 interface AddHoldingFormProps {
   onAdd: (holding: Holding) => void;
@@ -13,6 +15,48 @@ const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAdd }) => {
   const [shares, setShares] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
   const [currentPrice, setCurrentPrice] = useState("");
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchField, setSearchField] = useState<"symbol" | "name">("symbol");
+  
+  const { results, loading: searchLoading, error: searchError, searchStocks } = useStockSearch();
+  const { quote, loading: quoteLoading, error: quoteError, fetchQuote } = useStockQuote();
+
+  const handleSearchChange = (value: string, field: "symbol" | "name") => {
+    setSearchField(field);
+
+    if (field === "symbol") {
+      setSymbol(value);
+    } else {
+      setName(value);
+    }
+
+    if (value.length >= 2) {
+      searchStocks(value);
+      setShowSearchResults(true);
+    } else {
+      setShowSearchResults(false);
+    }
+  };
+
+  const handleSelectStock = async (stock: any) => {
+    setSymbol(stock.symbol);
+    setName(stock.name);
+    setShowSearchResults(false);
+    
+    // Auto-fetch current price
+    await fetchQuote(stock.symbol);
+  };
+
+  // Update current price when quote is fetched
+  useEffect(() => {
+    if (quote) {
+      setCurrentPrice(quote.currentPrice.toFixed(2));
+      // Optionally set purchase price to current price as starting point
+      if (!purchasePrice) {
+        setPurchasePrice(quote.currentPrice.toFixed(2));
+      }
+    }
+  }, [quote]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,35 +93,95 @@ const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAdd }) => {
     <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 mb-6">
       <h2 className="text-2xl font-bold text-white mb-4">Add New Holding</h2>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
+        <div className="relative">
           <label className="block text-gray-300 mb-2">Symbol</label>
           <input 
             type="text"
             value={symbol}
-            onChange={(e) => setSymbol(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value, "symbol")}
             className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            placeholder="AAPL"
+            placeholder="Type to search (AAPL, TSLA, etc.)"
             required
           />
+          
+          {/* Search Results Dropdown for Symbol field*/}
+          {showSearchResults && searchField === "symbol" && (
+            <div className="absolute z-10 w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg max-h-60 overflow-y-auto">
+              {searchLoading && (
+                <div className="p-3 text-gray-400 text-sm">Searching...</div>
+              )}
+              {searchError && (
+                <div className="p-3 text-red-500 text-sm">{searchError}</div>
+              )}
+              {!searchLoading && !searchError && results.length === 0 && symbol.length >= 2 && (
+                <div className="p-3 text-gray-400 text-sm">No results found</div>
+              )}
+              {!searchLoading && results.length > 0 && (
+                <div>
+                  {results.map((stock) => (
+                    <div
+                      key={stock.symbol}
+                      onClick={() => handleSelectStock(stock)}
+                      className="p-3 hover:bg-gray-800 cursor-pointer border-b border-gray-700 last:border-b-0"
+                    >
+                      <div className="font-semibold text-white">{stock.symbol}</div>
+                      <div className="text-sm text-gray-400">{stock.name}</div>
+                      <div className="text-xs text-gray-500">{stock.type} • {stock.region}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        <div>
+        <div className="relative">
           <label className="block text-gray-300 mb-2">Company Name</label>
           <input 
             type="text"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value, "name")}
             className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            placeholder="Apple Inc."
+            placeholder="Auto-filled from search"
             required
           />
+
+          {/* Search Results Dropdown for Name field */}
+          {showSearchResults && searchField === "name" && (
+            <div className="absolute z-10 w-full mt-1 bg-gray-900 border border-gray-700 rounded-lg max-h-60 overflow-y-auto">
+              {searchLoading && (
+                <div className="p-3 text-gray-400 text-sm">Searching...</div>
+              )}
+              {searchError && (
+                <div className="p-3 text-red-500 text-sm">{searchError}</div>
+              )}
+              {!searchLoading && !searchError && results.length === 0 && name.length >= 2 && (
+                <div className="p-3 text-gray-400 text-sm">No results found</div>
+              )}
+              {!searchLoading && results.length > 0 && (
+                <div>
+                  {results.map((stock) => (
+                    <div
+                      key={stock.symbol}
+                      onClick={() => handleSelectStock(stock)}
+                      className="p-3 hover:bg-gray-800 cursor-pointer border-b border-gray-700 last:border-b-0"
+                    >
+                      <div className="font-semibold text-white">{stock.symbol}</div>
+                      <div className="text-sm text-gray-400">{stock.name}</div>
+                      <div className="text-xs text-gray-500">{stock.type} • {stock.region}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div>
           <label className="block text-gray-300 mb-2">Shares</label>
           <input 
             type="number"
-            step="0.01"
+            step="any"
             value={shares}
             onChange={(e) => setShares(e.target.value)}
             className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
@@ -87,29 +191,39 @@ const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAdd }) => {
         </div>
 
         <div>
-          <label className="block text-gray-300 mb-2">Purchase Price</label>
+          <label className="block text-gray-300 mb-2">
+            Purchase Price
+            {quoteLoading && <span className="text-yellow-500 text-xs ml-2">(Loading...)</span>}
+          </label>
           <input 
             type="number"
             step="0.01"
             value={purchasePrice}
             onChange={(e) => setPurchasePrice(e.target.value)}
             className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            placeholder="150.00"
+            placeholder="Auto-filled or enter manually"
             required
           />
         </div>
 
         <div>
-          <label className="block text-gray-300 mb-2">Current Price</label>
+          <label className="block text-gray-300 mb-2">
+            Current Price
+            {quoteLoading && <span className="text-yellow-500 text-xs ml-2">(Loading...)</span>}
+            {quote && <span className="text-green-500 text-xs ml-2">(Live price)</span>}
+          </label>
           <input 
             type="number"
             step="0.01"
             value={currentPrice}
             onChange={(e) => setCurrentPrice(e.target.value)}
             className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-            placeholder="175.00"
+            placeholder="Auto-filled from live data"
             required
           />
+          {quoteError && (
+            <p className="text-red-500 text-xs mt-1">{quoteError}</p>
+          )}
         </div>
 
         <div className="md:col-span-2">

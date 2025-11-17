@@ -9,26 +9,43 @@ export async function GET(request: Request) {
   }
 
   try {
-    const apiKey = process.env.ALPHA_VANTAGE_API_KEY;
-    const url = `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keyword=${query}&apikey=${apiKey}`;
+    const apiKey = process.env.FINNHUB_API_KEY;
+    const url = `https://finnhub.io/api/v1/search?q=${query}&token=${apiKey}`;
+
+    console.log("Searching for:", query);
 
     const response = await fetch(url);
     const data = await response.json();
 
-    if (data.bestMatches) {
-      const results = data.bestMatches.map((match: any) => ({
-        symbol: match["1. symbol"],
-        name: match["2. name"],
-        type: match["3. type"],
-        region: match["4. region"]
+    console.log("API Response:", data);
+
+    // Finnhub returns an error property if something goes wrong
+    if (data.error) {
+      return NextResponse.json({
+        error: data.error,
+        results: []
+      }, { status: 400 });
+    }    
+
+    if (data.result) {
+      const results = data.result.map((match: any) => ({
+        symbol: match.symbol,
+        name: match.description,
+        type: match.type,
+        region: "United States" // Finnhub doesn't return region directly
       }));
 
-      return NextResponse.json({ results });
+      // Remove duplicates by symbol
+      const uniqueResults = results.filter((stock: any, index: number, self: any[]) =>
+        index === self.findIndex((s) => s.symbol === stock.symbol)
+      );
+
+      return NextResponse.json({ results: uniqueResults });
     }
 
     return NextResponse.json({ results: [] });
   } catch (error) {
     console.error("Error searching stocks:", error);
-    return NextResponse.json({ error: "Failed to search stocks" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to search stocks"}, { status: 500 });
   }
 }

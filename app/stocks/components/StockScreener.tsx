@@ -31,28 +31,51 @@ const StockScreener: React.FC<StockScreenerProps> = ({ onAddToWatchlist }) => {
 
   return (
     <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 mb-6">
-      <h2 className="text-2xl font-bold text-white mb-4">Stock Screener</h2>
+      <h2 className="text-2xl font-bold text-white mb-2">Stock Screener</h2>
+      <p className="text-gray-400 mb-4 text-sm">
+        Search for stocks by symbol or company name. Type at least 2 characters to begin searching.
+      </p>
 
-      <div className="mb-6">
-        <input 
-          type="text"
-          placeholder="Search stocks by symbol or name..."
-          value={searchTerm}
-          onChange={handleSearchChange}
-          className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-        />
+      <div className="mb-4">
+        <div className="relative">
+          <input 
+            type="text"
+            placeholder="Type stock symbol or company name..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className="w-full p-4 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 text-lg"
+          />
+          {searchTerm.length > 0 && searchTerm.length < 2 && (
+            <div className="absolute right-4 top-4 text-yellow-500 text-sm">
+              Type 1 more character
+            </div>
+          )}
+        </div>
       </div>
 
       {loading && (
-        <div className="text-gray-400 text-center py-4">Searching...</div>
+        <div className="text-gray-400 text-center py-8 bg-gray-900 rounded-lg border border-gray-700">
+          <div className="animate-pulse">Searching stocks...</div>
+        </div>
       )}
 
       {error && (
-        <div className="text-red-500 text-center py-4">{error}</div>
+        <div className="text-red-500 text-center py-8 bg-gray-900 rounded-lg border border-red-900">
+          {error}
+        </div>
+      )}
+
+      {!loading && !error && searchTerm.length >= 2 && results.length === 0 && (
+        <div className="text-gray-400 text-center py-8 bg-gray-900 rounded-lg border border-gray-700">
+          No stocks found. Try a different search term.
+        </div>
       )}
 
       {!loading && !error && results.length > 0 && (
         <div className="overflow-x-auto">
+          <div className="text-gray-400 mb-2 text-sm">
+            Found {results.length} results
+          </div>
           <table className="min-w-full bg-gray-900 border border-gray-700">
             <thead>
               <tr className="bg-gray-800">
@@ -85,8 +108,12 @@ const StockScreener: React.FC<StockScreenerProps> = ({ onAddToWatchlist }) => {
         </div>
       )}
 
-      {!loading && !error && searchTerm.length >= 2 && results.length === 0 && (
-        <div className="text-gray-400 text-center py-4">No results found</div>
+      {searchTerm.length === 0 && (
+        <div className="text-gray-500 text-center py-12 bg-gray-900 rounded-lg border border-gray-700">
+          <div className="text-4xl mb-3">🔍</div>
+          <p>Start typing to search for stocks</p>
+          <p className="text-sm mt-2">Try AAPL, Microsoft, TSLA, etc.</p>
+        </div>
       )}
     </div>
   );
