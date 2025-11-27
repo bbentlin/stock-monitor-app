@@ -8,20 +8,21 @@ interface SummaryCardsProps {
 }
 
 const SummaryCards: React.FC<SummaryCardsProps> = ({ holdings }) => {
-  const totalValue = holdings.reduce((sum, h) => sum + h.value, 0);
-  const totalGainLoss = holdings.reduce((sum, h) => sum + h.gainLoss, 0);
-  const totalGainLossPercent = holdings.length > 0
-    ? (totalGainLoss / (totalValue - totalGainLoss)) * 100
-    : 0;
-
-  const bestPerformer = holdings.length > 0
-    ? holdings.reduce((best, h) => h.gainLossPercent > best.gainLossPercent ? h : best)
-    : null;
-
-  const worstPerformer = holdings.length > 0
-    ? holdings.reduce((worst, h) => h.gainLossPercent < worst.gainLossPercent ? h : worst)
-    : null;
+  const safeHoldings = holdings || [];
   
+  const totalValue = safeHoldings.reduce((sum, h) => sum + h.value, 0);
+  const totalGainLoss = safeHoldings.reduce((sum, h) => sum + h.gainLoss, 0);
+  const totalCost = totalValue - totalGainLoss;
+  const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
+
+  const bestPerformer = safeHoldings.length > 0
+    ? safeHoldings.reduce((best, h) => h.gainLossPercent > best.gainLossPercent ? h : best)
+    : null;
+
+  const worstPerformer = safeHoldings.length > 0
+    ? safeHoldings.reduce((worst, h) => h.gainLossPercent < worst.gainLossPercent ? h : worst)
+    : null;
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
       <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
@@ -32,8 +33,8 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ holdings }) => {
       <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
         <h3 className="text-gray-400 text-sm mb-2">Total Gain/Loss</h3>
         <p className={`text-2xl font-bold ${totalGainLoss >= 0 ? "text-green-500" : "text-red-500"}`}>
-          ${totalGainLoss.toFixed(2)}
-          <span className="text-sm ml-2">({totalGainLossPercent.toFixed(2)}%)</span>
+          {totalGainLoss >= 0 ? "+" : ""}${totalGainLoss.toFixed(2)}
+          <span className="text-sm ml-2">({totalGainLossPercent >= 0 ? "+" : ""}{totalGainLossPercent.toFixed(2)}%)</span>
         </p>
       </div>
 
@@ -45,19 +46,21 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ holdings }) => {
             <p className="text-green-500 text-sm">+{bestPerformer.gainLossPercent.toFixed(2)}%</p>
           </>
         ) : (
-          <p className="text-gray-500">N/A</p>
+          <p className="text-gray-500">No holdings yet</p>
         )}
       </div>
 
       <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
         <h3 className="text-gray-400 text-sm mb-2">Worst Performer</h3>
-        {worstPerformer ?  (
+        {worstPerformer ? (
           <>
             <p className="text-white text-xl font-bold">{worstPerformer.symbol}</p>
-            <p className="text-red-500 text-sm">{worstPerformer.gainLossPercent.toFixed(2)}%</p>
+            <p className={`text-sm ${worstPerformer.gainLossPercent >= 0 ? "text-green-500" : "text-red-500"}`}>
+              {worstPerformer.gainLossPercent >= 0 ? "+" : ""}{worstPerformer.gainLossPercent.toFixed(2)}%
+            </p>
           </>
         ) : (
-          <p className="text-gray-500">N/A</p>
+          <p className="text-gray-500">No holdings yet</p>
         )}
       </div>
     </div>

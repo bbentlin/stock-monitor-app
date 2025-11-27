@@ -19,6 +19,8 @@ export interface Holding {
   value: number;
   gainLoss: number;
   gainLossPercent: number;
+  purchaseDate?: string;
+  lotId: string; // Unique identifier for each purchase
 }
 
 export interface WatchlistStock {
@@ -53,13 +55,19 @@ export const saveHoldings = (holdings: Holding[]): void => {
 
 export const addHolding = (holding: Holding): Holding[] => {
   const holdings = getHoldings();
+
+  // Generate unique lot ID if not provided
+  if (!holding.lotId) {
+    holding.lotId = `${holding.symbol}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  }
+
   holdings.push(holding);
   saveHoldings(holdings);
   return holdings;
 };
 
-export const removeHolding = (symbol: string): Holding[] => {
-  const holdings = getHoldings().filter(h => h.symbol !== symbol);
+export const removeHolding = (lotId: string): Holding[] => {
+  const holdings = getHoldings().filter(h => h.lotId !== lotId);
   saveHoldings(holdings);
   return holdings;
 };

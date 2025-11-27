@@ -77,6 +77,8 @@ const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAdd }) => {
       value,
       gainLoss,
       gainLossPercent,
+      lotId: `${symbol.toUpperCase()}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+      purchaseDate: new Date().toISOString(),
     };
 
     onAdd(holding);

@@ -8,28 +8,46 @@ import AddHoldingForm from "./components/AddHoldingForm";
 import { useHoldings } from "@/lib/hooks/useHoldings";
 
 const DashboardPage: React.FC = () => {
-  const { holdings, loading, addHolding, removeHolding } = useHoldings();
+  const { holdings, loading, error, addHolding, removeHolding } = useHoldings();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-4 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6 flex items-center justify-center">
+        <div className="text-white text-xl">Loading your portfolio...</div>
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6 flex items-center justify-center">
+        <div className="text-red-500 text-xl">{error}</div>
+      </div>
+    );
+  }
+
+  // Ensure holdings is always an array befor passing to components
+  const safeHoldings = holdings || [];
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6">
       <div className="container mx-auto">
-        <h1 className="text-4xl font-bold text-white mb-6">Dashboard</h1>
-        <SummaryCards holdings={holdings} />
-        <AddHoldingForm onAdd={addHolding} />
-        <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 mb-6">
-          <PerformanceChart />
+        <h1 className="text-3xl font-bold text-white mb-6">Portfolio Dashboard</h1>
+
+        <SummaryCards holdings={safeHoldings} />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div className="lg:col-span-2">
+            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
+              <PerformanceChart holdings={safeHoldings} />
+            </div>
+          </div>
+          <div>
+            <AddHoldingForm onAdd={addHolding} />
+          </div>
         </div>
-        <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-          <HoldingsTable holdings={holdings} onRemove={removeHolding} />
-        </div>
+
+        <HoldingsTable holdings={safeHoldings} onRemove={removeHolding} />
       </div>
     </div>
   );

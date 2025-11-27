@@ -1,39 +1,62 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { Holding } from "./useHoldings";
 
 interface StockData {
   date: string;
   value: number;
 }
 
-export const usePortfolio = () => {
+export const usePortfolio = (holdings: Holding[]) => {
   const [portfolio, setPortfolio] = useState<StockData[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Replace with actual API call
-    const fetchPortfolio = async () => {
+    const generatePortfolioHistory = () => {
       try {
-        // Mock data for now
-        const mockData: StockData[] = [
-          { date: "2024-01", value: 10000 },
-          { date: "2024-02", value: 10500 },
-          { date: "2024-03", value: 11200 },
-          { date: "2024-04", value: 10800 },
-          { date: "2024-05", value: 12000 },
-        ];
+        if (holdings.length === 0) {
+          setPortfolio([]);
+          setLoading(false);
+          return;
+        }
+
+        // Calculate current total value
+        const currentValue = holdings.reduce((sum, h) => sum + h.value, 0);
+        
+        // Calculate initial investment (what was paid)
+        const initialValue = holdings.reduce((sum, h) => sum + (h.shares * h.purchasePrice), 0);
+
+        // Generate mock historical data showing progression from initial value to current value
+        const today = new Date();
+        const mockData: StockData[] = [];
+        const monthsBack = 6;
+
+        for (let i = monthsBack; i < 0; i--) {
+          const date  = new Date(today);
+          date.setMonth(date.getMonth() - i);
+
+          // Calculate progressive value from initial to current
+          const progress = (monthsBack - i) / monthsBack;
+          const value = initialValue + ((currentValue - initialValue) * progress);
+
+          mockData.push({
+            date: date.toLocaleDateString("en-US", { month: "short", year: "numeric" }),
+            value: Math.round(value * 100) / 100
+          });
+        }
 
         setPortfolio(mockData);
       } catch (error) {
-        console.error("Error fetching portfolio:", error);
+        console.log("Error generating portfolio history:", error);
+        setPortfolio([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchPortfolio();
-  }, []);
+    generatePortfolioHistory();
+  }, [holdings]);
 
   return { portfolio, loading };
 };

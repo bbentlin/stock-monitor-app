@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export interface Holding {
+  id?: string;
   symbol: string;
   name: string;
   shares: number;
@@ -11,57 +12,81 @@ export interface Holding {
   value: number;
   gainLoss: number;
   gainLossPercent: number;
+  lotId: string;
+  purchaseDate?: string;
 }
 
 export const useHoldings = () => {
   const [holdings, setHoldings] = useState<Holding[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchHoldings = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch("/api/holdings");
+      const data = await response.json();
+
+      // Ensure we always set an array
+      setHoldings(Array.isArray(data.holdings) ? data.holdings : []);
+    } catch (err) {
+      console.error("Error fetching holdings:", err);
+      setError("Failed to fetch holdings");
+      setHoldings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    const fetchHoldings = async () => {
-      try {
-        const response = await fetch("/api/holdings");
-        const data = await response.json();
-        setHoldings(data.holdings);
-      } catch (error) {
-        console.error("Error fetching holdings:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchHoldings();
   }, []);
 
-  const addHolding = async (holding: Holding) => {
+  const addHolding = async (holding: Omit<Holding, "id">) => {
     try {
       const response = await fetch("/api/holdings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(holding)
+        body: JSON.stringify(holding),
       });
-      const data = await response.json();
-      if (data.success) {
-        setHoldings([...holdings, holding]);
+
+      if (!response.ok) {
+        throw new Error("Failed to add holding");
       }
-    } catch (error) {
-      console.error("Error adding holding:", error);
+
+      await fetchHoldings();
+      return true;
+    } catch (err) {
+      console.error("Error adding holding:", err);
+      return false;
     }
   };
 
-  const removeHolding = async (symbol: string) => {
+  const removeHolding = async (lotId: string) => {
     try {
-      const response = await fetch(`/api/holdings?symbol=${symbol}`, {
-        method: "DELETE"
+      const response = await fetch(`/api/holdings?lotId=${lotId}`, {
+        method: "DELETE",
       });
-      const data = await response.json();
-      if (data.success) {
-        setHoldings(holdings.filter(h => h.symbol !== symbol));
+
+      if (!response.ok) {
+        throw new Error("Failed to remove holding");
       }
-    } catch (error) {
-      console.error("Error removing holding:", error);
+
+      await fetchHoldings();
+      return true;
+    } catch (err) {
+      console.error("Error removing holding:", err);
+      return false;
     }
   };
 
-  return { holdings, loading, addHolding, removeHolding };
+  return {
+    holdings,
+    loading,
+    error, 
+    addHolding,
+    removeHolding,
+    refreshHoldings: fetchHoldings,
+  };
 };

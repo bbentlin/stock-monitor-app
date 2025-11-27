@@ -10,7 +10,7 @@ const StocksPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradien-to-b from-gray-900 to-gray-800 p-4 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-4 flex items-center justify-center">
         <div className="text-white text-xl">Loading...</div>
       </div>
     );
