@@ -41,7 +41,7 @@ export const useHoldings = () => {
 
   useEffect(() => {
     fetchHoldings();
-  }, []);
+  }, [fetchHoldings]);
 
   const addHolding = async (holding: Omit<Holding, "id">) => {
     try {

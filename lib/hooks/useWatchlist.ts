@@ -18,7 +18,7 @@ export const useWatchlist = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const isAuthenticated = status === "authenticated" && !session?.user?.id;
+  const isAuthenticated = status === "authenticated" && !!session?.user?.id;
   const isLoading = status === "loading";
 
   // Get watchlist from localStorage
@@ -143,7 +143,6 @@ export const useWatchlist = () => {
 
     try {
       if (isAuthenticated) {
-        // Remove from database
         const response = await fetch(`/api/watchlist?symbol=${symbol}`, {
           method: "DELETE",
         });
@@ -153,8 +152,9 @@ export const useWatchlist = () => {
           return false;
         }
       } else {
-        // Remove from localStorage
+        // Fix: Actually save the updated list
         const updated = watchlist.filter((s) => s.symbol !== symbol);
+        saveLocalWatchlist(updated);
       }
 
       setWatchlist(watchlist.filter((s) => s.symbol !== symbol));

@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { WatchlistStock } from "@/lib/hooks/useWatchlist";
-import { resolve } from "path";
 
 interface WatchlistProps {
   stocks: WatchlistStock[];
@@ -43,7 +42,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ stocks, onRemove }) => {
           console.error(`Error fetching price for ${stock.symbol}`, err);
         }
         // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(r => setTimeout(r, 100));
       }
 
       setPrices(newPrices);
@@ -62,7 +61,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ stocks, onRemove }) => {
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-bold text-white">Watchlist</h2>
         {loadingPrices && (
-          <span className="text-gray-400 text-center py-8">Updating prices...</span>
+          <span className="text-gray-400 text-sm">Updating prices...</span>
         )}
       </div>
 

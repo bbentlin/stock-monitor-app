@@ -32,8 +32,9 @@ export const usePortfolio = (holdings: Holding[]) => {
         const mockData: StockData[] = [];
         const monthsBack = 6;
 
-        for (let i = monthsBack; i < 0; i--) {
-          const date  = new Date(today);
+        // Fix: should be i >= 0, not i < 0
+        for (let i = monthsBack; i >= 0; i--) {
+          const date = new Date(today);
           date.setMonth(date.getMonth() - i);
 
           // Calculate progressive value from initial to current

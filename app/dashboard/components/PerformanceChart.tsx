@@ -2,9 +2,9 @@
 
 import React from "react";
 import { Line } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, plugins } from "chart.js";
+import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend } from "chart.js";
 import { usePortfolio } from "@/lib/hooks/usePortfolio";
-import { Holding } from "@/lib/db/storage";
+import { Holding } from "@/lib/hooks/useHoldings";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend);
 
@@ -37,21 +37,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ holdings }) => {
     value: number;
   }
 
-  interface ChartDataset {
-    label: string;
-    data: number[];
-    borderColor: string;
-    backgroundColor: string;
-    fill: boolean;
-    tension: number;
-  }
-
-  interface ChartData {
-    labels: string[];
-    datasets: ChartDataset[];
-  }
-
-  const data: ChartData = {
+  const data = {
     labels: portfolio.map((stock: StockData) => stock.date),
     datasets: [
       {
@@ -85,7 +71,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ holdings }) => {
       },
       tooltip: {
         callbacks: {
-          label: function(context: any) {
+          label: function(context: { parsed: { y: number } }) {
             return `Value: $${context.parsed.y.toFixed(2)}`;
           }
         }
@@ -103,8 +89,8 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ holdings }) => {
       y: {
         ticks: {
           color: "#9CA3AF",
-          callback: function(value: any) {
-            return "$" + value.toLocaleString();
+          callback: function(value: number | string) {
+            return "$" + Number(value).toLocaleString();
           }
         },
         grid: {

@@ -33,7 +33,7 @@ export async function GET(request: Request) {
       name: data.name,
       ticker: data.ticker,
       exchange: data.exchange,
-      industry: data.finnhubbIndustry,
+      industry: data.finnhubIndustry,
       logo: data.logo,
       weburl: data.weburl,
       marketCapitalization: data.marketCapitalization,

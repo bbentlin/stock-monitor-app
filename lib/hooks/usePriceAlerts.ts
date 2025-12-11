@@ -63,7 +63,7 @@ export const usePriceAlerts = () => {
             (alert.condition === "below" && currentPrice <= alert.targetPrice)
           ) {
             alert.triggered = true;
-            hasTriggered = true
+            hasTriggered = true;
 
             // Show browser notification
             if (Notification.permission === "granted") {

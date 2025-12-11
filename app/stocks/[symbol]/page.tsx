@@ -34,7 +34,7 @@ const StockDetailPage: React.FC = () => {
       fetchQuote(symbol);
       fetchProfile(symbol);
     }
-  }, [symbol]);
+  }, [symbol, fetchQuote, fetchProfile]);
 
   useEffect(() => {
     setIsInWatchlist(watchlist.some((s) => s.symbol === symbol.toUpperCase()));

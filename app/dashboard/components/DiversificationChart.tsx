@@ -41,7 +41,7 @@ const DiversificationChart: React.FC<DiversificationChartProps> = ({ holdings })
 
   const options = {
     responsive: true,
-    maintainAspectRation: false,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: "right" as const,

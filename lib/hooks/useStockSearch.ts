@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useRef } from "react";
 
 export interface StockSearchResult {
   symbol: string;
@@ -14,8 +14,7 @@ export const useStockSearch = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Debounce timer ref
-  const debounceTimerRef = useState<NodeJS.Timeout | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const searchStocks = useCallback(async (query: string, immediate: boolean = false) => {
     if (!query || query.length < 2) {
@@ -25,8 +24,8 @@ export const useStockSearch = () => {
     }
 
     // Clear existing timer
-    if (debounceTimerRef[0]) {
-      clearTimeout(debounceTimerRef[0]);
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
     }
 
     // Set loading state immediately
@@ -57,8 +56,7 @@ export const useStockSearch = () => {
       executeSearch();
     } else {
       // Debounce: wait 500ms after user stops typing
-      const timer = setTimeout(executeSearch, 500);
-      debounceTimerRef[0] = timer;
+      debounceTimerRef.current = setTimeout(executeSearch, 500);
     }
   }, []);
 

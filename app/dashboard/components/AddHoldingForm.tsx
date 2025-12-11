@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Holding } from "@/lib/hooks/useHoldings";
 import { useStockSearch } from "@/lib/hooks/useStockSearch";
 import { useStockQuote } from "@/lib/hooks/useStockQuote";
@@ -21,6 +21,9 @@ const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAdd }) => {
   const { results, loading: searchLoading, error: searchError, searchStocks } = useStockSearch();
   const { quote, loading: quoteLoading, error: quoteError, fetchQuote } = useStockQuote();
 
+  // Fix: Use ref to track if purchase price was manually set
+  const purchasePriceSetRef = useRef(false);
+
   const handleSearchChange = (value: string, field: "symbol" | "name") => {
     setSearchField(field);
 
@@ -38,10 +41,11 @@ const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAdd }) => {
     }
   };
 
-  const handleSelectStock = async (stock: any) => {
+  const handleSelectStock = async (stock: { symbol: string; name: string }) => {
     setSymbol(stock.symbol);
     setName(stock.name);
     setShowSearchResults(false);
+    purchasePriceSetRef.current = false;
     
     // Auto-fetch current price
     await fetchQuote(stock.symbol);
@@ -51,12 +55,17 @@ const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAdd }) => {
   useEffect(() => {
     if (quote) {
       setCurrentPrice(quote.currentPrice.toFixed(2));
-      // Optionally set purchase price to current price as starting point
-      if (!purchasePrice) {
+      // Only set purchase price if not manually set
+      if (!purchasePriceSetRef.current && !purchasePrice) {
         setPurchasePrice(quote.currentPrice.toFixed(2));
       }
     }
-  }, [quote]);
+  }, [quote, purchasePrice]);
+
+  const handlePurchasePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    purchasePriceSetRef.current = true;
+    setPurchasePrice(e.target.value);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,6 +98,7 @@ const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAdd }) => {
     setShares("");
     setPurchasePrice("");
     setCurrentPrice("");
+    purchasePriceSetRef.current = false;
   };
 
   return (
@@ -201,7 +211,7 @@ const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAdd }) => {
             type="number"
             step="0.01"
             value={purchasePrice}
-            onChange={(e) => setPurchasePrice(e.target.value)}
+            onChange={handlePurchasePriceChange}
             className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
             placeholder="Auto-filled or enter manually"
             required
