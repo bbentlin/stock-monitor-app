@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useStockQuote, StockQuote } from "@/lib/hooks/useStockQuote";
@@ -29,18 +29,7 @@ const StockDetailPage: React.FC = () => {
   const [isInWatchlist, setIsInWatchlist] = useState(false);
   const [addingToWatchlist, setAddingToWatchlist] = useState(false);
 
-  useEffect(() => {
-    if (symbol) {
-      fetchQuote(symbol);
-      fetchProfile(symbol);
-    }
-  }, [symbol, fetchQuote, fetchProfile]);
-
-  useEffect(() => {
-    setIsInWatchlist(watchlist.some((s) => s.symbol === symbol.toUpperCase()));
-  }, [watchlist, symbol]);
-
-  const fetchProfile = async (sym: string) => {
+  const fetchProfile = useCallback(async (sym: string) => {
     setProfileLoading(true);
     setProfileError(null);
     try {
@@ -57,7 +46,18 @@ const StockDetailPage: React.FC = () => {
     } finally {
       setProfileLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (symbol) {
+      fetchQuote(symbol);
+      fetchProfile(symbol);
+    }
+  }, [symbol, fetchQuote, fetchProfile]);
+
+  useEffect(() => {
+    setIsInWatchlist(watchlist.some((s) => s.symbol === symbol.toUpperCase()));
+  }, [watchlist, symbol]);
 
   const handleAddToWatchlist = async () => {
     if (isInWatchlist || !profile) return;
