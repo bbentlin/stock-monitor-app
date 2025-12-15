@@ -71,8 +71,9 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({ holdings }) => {
       },
       tooltip: {
         callbacks: {
-          label: function(context: { parsed: { y: number } }) {
-            return `Value: $${context.parsed.y.toFixed(2)}`;
+          label: function(context: { parsed: { y: number | null } }) {
+            const value = context.parsed.y ?? 0;
+            return `Value: $${value.toFixed(2)}`;
           }
         }
       }

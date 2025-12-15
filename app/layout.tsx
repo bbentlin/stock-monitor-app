@@ -1,10 +1,11 @@
 import React from "react";
+import { Metadata } from "next";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Providers } from "@/components/Providers";
 import "@/app/globals.css";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Stock Monitor",
   description: "Track your stock portfolio",
 };
