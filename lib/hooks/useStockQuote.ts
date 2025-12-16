@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 export interface StockQuote {
   symbol: string;
@@ -18,7 +18,7 @@ export const useStockQuote = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchQuote = async (symbol: string) => {
+  const fetchQuote = useCallback(async (symbol: string) => {
     if (!symbol) {
       setQuote(null);
       return;
@@ -44,7 +44,7 @@ export const useStockQuote = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return { quote, loading, error, fetchQuote };
 };

@@ -35,7 +35,7 @@ export const useLivePrices = (holdings: Holding[]) => {
     setError(null);
 
     try {
-      const response = await fetch("/api/stocks/quotes", {
+      const response = await fetch("/api/stock/quotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ symbols }),
