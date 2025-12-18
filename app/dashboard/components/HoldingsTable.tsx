@@ -13,6 +13,16 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
   const safeHoldings = holdings || [];
   const { liveHoldings, loading, lastUpdated, error, refresh } = useLivePrices(safeHoldings);
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "—";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   if (safeHoldings.length === 0) {
     return (
       <div className="bg-gray-800 rounded-lg border border-gray-700 p-12 text-center">
@@ -68,6 +78,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
               <th className="py-3 px-4 border-b border-gray-700 text-left text-gray-400 text-sm font-medium">Name</th>
               <th className="py-3 px-4 border-b border-gray-700 text-right text-gray-400 text-sm font-medium">Shares</th>
               <th className="py-3 px-4 border-b border-gray-700 text-right text-gray-400 text-sm font-medium">Purchase</th>
+              <th className="py-3 px-4 border-b border-gray-700 text-left text-gray-400 text-sm font-medium">Date</th>
               <th className="py-3 px-4 border-b border-gray-700 text-right text-gray-400 text-sm font-medium">
                 Current
                 {loading && <span className="ml-1 text-blue-400">●</span>}
@@ -91,6 +102,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
                   <td className="py-3 px-4 border-b border-gray-700 text-gray-300">{holding.name}</td>
                   <td className="py-3 px-4 border-b border-gray-700 text-right text-gray-300">{holding.shares}</td>
                   <td className="py-3 px-4 border-b border-gray-700 text-right text-gray-300">${holding.purchasePrice.toFixed(2)}</td>
+                  <td className="py-3 px-4 border-b border-gray-700 text-gray-400 text-sm">{formatDate(holding.purchaseDate)}</td>
                   <td className="py-3 px-4 border-b border-gray-700 text-right">
                     <span className={hasLivePrice ? "text-white" : "text-gray-400"}>
                       ${currentPrice.toFixed(2)}
@@ -125,7 +137,5 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
     </div>
   );
 };
-
-
 
 export default HoldingsTable;
