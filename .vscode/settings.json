@@ -1,0 +1,7 @@
+{
+  "typescript.inlayHints.functionLikeReturnTypes.enabled": false,
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "files.autoSave": "afterDelay"
+}
