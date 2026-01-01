@@ -3,6 +3,7 @@
 import React from "react";
 import { Holding } from "@/lib/hooks/useHoldings";
 import { useLivePrices } from "@/lib/hooks/useLivePrices";
+import Link from "next/link";
 
 interface HoldingsTableProps {
   holdings: Holding[];
@@ -14,198 +15,100 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
   const { liveHoldings, loading, lastUpdated, error, refresh } = useLivePrices(safeHoldings);
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return "—";
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
+    return date.toLocaleDateString();
   };
 
   if (safeHoldings.length === 0) {
     return (
-      <div className="bg-gray-800 rounded-lg border border-gray-700 p-8 sm:p-12 text-center">
-        <h2 className="text-xl sm:text-2xl font-bold text-white mb-4">Holdings</h2>
-        <p className="text-gray-400 text-base sm:text-lg">No holdings yet</p>
-        <p className="text-gray-500 text-sm mt-2">Add a stock above to start tracking your portfolio</p>
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center border border-gray-200 dark:border-gray-700">
+        <p className="text-gray-600 dark:text-gray-400">No holdings yet. Add your first stock above!</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-gray-700 gap-3">
-        <h2 className="text-xl sm:text-2xl font-bold text-white">Holdings</h2>
-        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-          {error && (
-            <span className="text-red-400 text-sm">{error}</span>
-          )}
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Holdings</h2>
+        <div className="flex items-center gap-4">
           {lastUpdated && (
-            <span className="text-gray-500 text-xs sm:text-sm">
+            <span className="text-sm text-gray-500 dark:text-gray-400">
               Updated: {lastUpdated.toLocaleTimeString()}
             </span>
           )}
           <button
             onClick={refresh}
             disabled={loading}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white px-3 py-1.5 rounded text-sm transition-colors"
+            className="text-blue-500 hover:text-blue-400 text-sm disabled:opacity-50"
           >
-            {loading ? (
-              <>
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Updating...
-              </>
-            ) : (
-              <>
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                Refresh
-              </>
-            )}
+            {loading ? "Refreshing..." : "Refresh"}
           </button>
         </div>
       </div>
 
-      {/* Desktop Table */}
-      <div className="hidden lg:block overflow-x-auto">
-        <table className="min-w-full">
-          <thead className="bg-gray-900">
+      {error && (
+        <div className="p-4 bg-yellow-100 dark:bg-yellow-900/30 border-b border-yellow-300 dark:border-yellow-700">
+          <p className="text-yellow-800 dark:text-yellow-200 text-sm">{error}</p>
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 dark:bg-gray-700">
             <tr>
-              <th className="py-3 px-4 border-b border-gray-700 text-left text-gray-400 text-sm font-medium">Symbol</th>
-              <th className="py-3 px-4 border-b border-gray-700 text-left text-gray-400 text-sm font-medium">Name</th>
-              <th className="py-3 px-4 border-b border-gray-700 text-right text-gray-400 text-sm font-medium">Shares</th>
-              <th className="py-3 px-4 border-b border-gray-700 text-right text-gray-400 text-sm font-medium">Purchase</th>
-              <th className="py-3 px-4 border-b border-gray-700 text-left text-gray-400 text-sm font-medium">Date</th>
-              <th className="py-3 px-4 border-b border-gray-700 text-right text-gray-400 text-sm font-medium">
-                Current 
-                {loading && <span className="ml-1 text-blue-400">●</span>}
-              </th>
-              <th className="py-3 px-4 border-b border-gray-700 text-right text-gray-400 text-sm font-medium">Value</th>
-              <th className="py-3 px-4 border-b border-gray-700 text-right text-gray-400 text-sm font-medium">Gain/Loss</th>
-              <th className="py-3 px-4 border-b border-gray-700 text-center text-gray-400 text-sm font-medium">Action</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Symbol</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Shares</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Avg Cost</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Price</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Value</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Gain/Loss</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Date</th>
+              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
             </tr>
           </thead>
-          <tbody>
-            {liveHoldings.map((holding) => {
-              const currentPrice = holding.livePrice ?? holding.currentPrice;
-              const value = holding.liveValue ?? holding.value;
-              const gainLoss = holding.liveGainLoss ?? holding.gainLoss;
-              const gainLossPercent = holding.liveGainLossPercent ?? holding.gainLossPercent;
-              const hasLivePrice = holding.livePrice !== undefined;
-
-              return (
-                <tr key={holding.lotId || `${holding.symbol}-${Math.random()}`} className="hover:bg-gray-700/50 transition-colors">
-                  <td className="py-3 px-4 border-b border-gray-700 text-white font-semibold">{holding.symbol}</td>
-                  <td className="py-3 px-4 border-b border-gray-700 text-gray-300">{holding.name}</td>
-                  <td className="py-3 px-4 border-b border-gray-700 text-right text-gray-300">{holding.shares}</td>
-                  <td className="py-3 px-4 border-b border-gray-700 text-right text-gray-300">{holding.purchasePrice.toFixed(2)}</td>
-                  <td className="py-3 px-4 border-b border-gray-700 text-gray-400 text-sm">{formatDate(holding.purchaseDate)}</td>
-                  <td className="py-3 px-4 border-b border-gray-700 text-right">
-                    <span className={hasLivePrice ? "text-white" : "text-gray-400"}>
-                      ${currentPrice.toFixed(2)}
+          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+            {liveHoldings.map((holding) => (
+              <tr key={holding.lotId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                <td className="px-4 py-3">
+                  <Link href={`/stocks/${holding.symbol}`} className="text-blue-500 hover:text-blue-400 font-medium">
+                    {holding.symbol}
+                  </Link>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{holding.name}</p>
+                </td>
+                <td className="px-4 py-3 text-gray-900 dark:text-white">{holding.shares}</td>
+                <td className="px-4 py-3 text-gray-900 dark:text-white">${holding.purchasePrice.toFixed(2)}</td>
+                <td className="px-4 py-3 text-gray-900 dark:text-white">
+                  ${(holding.livePrice || holding.currentPrice).toFixed(2)}
+                </td>
+                <td className="px-4 py-3 text-gray-900 dark:text-white">
+                  ${(holding.liveValue || holding.value).toFixed(2)}
+                </td>
+                <td className="px-4 py-3">
+                  <span className={(holding.liveGainLoss || holding.gainLoss) >= 0 ? "text-green-500" : "text-red-500"}>
+                    {(holding.liveGainLoss || holding.gainLoss) >= 0 ? "+" : ""}
+                    ${(holding.liveGainLoss || holding.gainLoss).toFixed(2)}
+                    <span className="text-sm ml-1">
+                      ({(holding.liveGainLossPercent || holding.gainLossPercent).toFixed(2)}%)
                     </span>
-                    {hasLivePrice && (
-                      <span className="ml-1 text-green-500 text-xs">●</span>
-                    )}
-                  </td>
-                  <td className="py-3 px-4 border-b border-gray-700 text-right text-white font-semibold">${value.toFixed(2)}</td>
-                  <td className={`py-3 px-4 border-b border-gray-700 text-right font-semibold ${gainLoss >= 0 ? "text-green-500" : "text-red-500"}`}>
-                    {gainLoss >= 0 ? "+" : ""}${gainLoss.toFixed(2)} ({gainLossPercent >= 0 ? "+" : ""}{gainLossPercent.toFixed(2)}%)
-                  </td>
-                  <td className="py-3 px-4 border-b border-gray-700 text-center">
-                    <button
-                      onClick={() => onRemove(holding.lotId)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-sm">
+                  {formatDate(holding.purchaseDate)}
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => onRemove(holding.lotId)}
+                    className="text-red-500 hover:text-red-400 text-sm"
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
-      </div>
-
-      {/* Mobile Cards */}
-      <div className="lg:hidden divide-y divide-gray-700">
-        {liveHoldings.map((holding) => {
-          const currentPrice = holding.livePrice ?? holding.currentPrice;
-          const value = holding.liveValue ?? holding.value;
-          const gainLoss = holding.liveGainLoss ?? holding.gainLoss;
-          const gainLossPercent = holding.liveGainLossPercent ?? holding.gainLossPercent;
-          const hasLivePrice = holding.livePrice !== undefined;
-
-          return (
-            <div key={holding.lotId || `${holding.symbol}-${Math.random()}`} className="p-4">
-              {/* Card Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-white text-lg">{holding.symbol}</span>
-                    {hasLivePrice && <span className="text-green-500 text-xs">●</span>}
-                  </div>
-                  <span className="text-gray-400 text-sm">{holding.name}</span>
-                </div>
-                <button
-                  onClick={() => onRemove(holding.lotId)}
-                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors"
-                >
-                  Remove
-                </button>
-              </div>
-
-              {/* Card Body */}
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-gray-500 block text-xs">Shares</span>
-                  <span className="tex-gray-300">{holding.shares}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block text-xs">Purchase Price</span>
-                  <span className="text-gray-300">{holding.purchasePrice.toFixed(2)}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block text-xs">Purchase Date</span>
-                  <span className="text-gray-300">{formatDate(holding.purchaseDate)}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500 block text-xs">Current Price</span>
-                  <span className={hasLivePrice ? "text-white" : "text-gray-400"}>
-                    ${currentPrice.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Card Footer */}
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-700">
-                <div>
-                  <span className="text-gray-500 block text-xs">Total Value</span>
-                  <span className="text-white font-semibold">${value.toFixed(2)}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-gray-500 block text-xs">Gain/Loss</span>
-                  <span className={`font-semibold ${gainLoss >= 0 ? "text-green-500" : "text-red-500"}`}>
-                    {gainLoss >= 0 ? "+" : ""}${gainLoss.toFixed(2)} ({gainLossPercent >= 0 ? "+" : ""}{gainLossPercent.toFixed(2)}%)
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Footer */}
-      <div className="p-3 bg-gray-900 text-gray-500 text-xs flex items-center gap-2">
-        <span className="text-green-500">●</span> Live price
-        <span className="mx-2">|</span>
-        Prices auto-refresh every 60 seconds
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Holding } from "@/lib/hooks/useHoldings";
+import { Holding } from "@/types";
 import { useLivePrices } from "@/lib/hooks/useLivePrices";
 
 interface SummaryCardsProps {

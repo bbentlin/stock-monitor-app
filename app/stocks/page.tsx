@@ -1,47 +1,51 @@
 "use client";
-import Link from "next/link";
+
 import React from "react";
-import StockScreener from "@/app/stocks/components/StockScreener";
-import Watchlist from "@/app/stocks/components/Watchlist";
 import { useWatchlist } from "@/lib/hooks/useWatchlist";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import StockScreener from "./components/StockScreener";
+import Watchlist from "./components/Watchlist";
 
 const StocksPage: React.FC = () => {
   const { watchlist, loading, error, isGuest, addToWatchlist, removeFromWatchlist, clearError } = useWatchlist();
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-4 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
+        <LoadingSpinner size="lg" text="Loading watchlist..." />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-6">
-      <div className="container mx-auto">
-        <h1 className="text-4xl font-bold text-white mb-6">Stock Selection</h1>
+    <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 p-6">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Stock Explorer</h1>
 
         {isGuest && (
-          <div className="bg-blue-500/20 border border-blue-500 text-blue-400 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
-            <span>
-              Your watchlist is saved locally.
-              <Link href="/auth/signin" className="underline ml-1 hover:text-blue-300">
-                Sign In
-              </Link>
-              {" "}to sync across devices.
-            </span>
+          <div className="bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700 rounded-lg p-4 mb-6">
+            <p className="text-yellow-800 dark:text-yellow-200">
+              You are browsing as a guest. Sign in to save your watchlist permanently.
+            </p>
           </div>
         )}
 
         {error && (
-          <div className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded-lg mb-6 flex items-center justify-between">
-            <span>{error}</span>
-            <button onClick={clearError} className="text-red-400 hover:text-red-300">x</button>
+          <div className="bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg p-4 mb-6 flex justify-between items-center">
+            <p className="text-red-800 dark:text-red-200">{error}</p>
+            <button
+              onClick={clearError}
+              className="text-red-800 dark:text-red-200 hover:text-red-900 dark:hover:text-red-100"
+            >
+              ✕
+            </button>
           </div>
         )}
 
-        <StockScreener onAddToWatchlist={addToWatchlist} />
-        <Watchlist stocks={watchlist} onRemove={removeFromWatchlist} /> 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <StockScreener onAddToWatchlist={addToWatchlist} />
+          <Watchlist stocks={watchlist} onRemove={removeFromWatchlist} />
+        </div>
       </div>
     </div>
   );
