@@ -32,56 +32,49 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ holdings }) => {
     : null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-        <div className="flex items-center justify-between">
-          <h3 className="text-gray-400 text-sm mb-2">Total Portfolio Value</h3>
-          {loading && (
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-          )}
-        </div>
-        <p className="text-white text-2xl font-bold">${liveTotalValue.toFixed(2)}</p>
-      </div>
-
-      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-        <div className="flex items-center justify-between">
-          <h3 className="text-gray-400 text-sm mb-2">Total Gain/Loss</h3>
-          {loading && (
-            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
-          )}
-        </div>
-        <p className={`text-2xl font-bold ${liveTotalGainLoss >= 0 ? "text-green-500" : "text-red-500"}`}>
-          {liveTotalGainLoss >= 0 ? "+" : ""}${liveTotalGainLoss.toFixed(2)}
-          <span className="text-sm ml-2">({totalGainLossPercent >= 0 ? "+" : ""}{totalGainLossPercent.toFixed(2)}%)</span>
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Value</p>
+        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+          {loading ? "..." : `$${liveTotalValue.toFixed(2)}`}
         </p>
       </div>
 
-      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-        <h3 className="text-gray-400 text-sm mb-2">Best Performer</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Gain/Loss</p>
+        <p className={`text-2xl font-bold ${liveTotalGainLoss >= 0 ? "text-gray-500" : "text-red-500"}`}>
+          {loading ? "..." : `$${liveTotalGainLoss >= 0 ? "+" : ""}$${liveTotalGainLoss.toFixed(2)}`}
+        </p>
+        <p className={`text-sm ${totalGainLossPercent >= 0 ? "text-green-500" : "text-red-500"}`}>
+          {loading ? "" : `${totalGainLossPercent >= 0 ? "+" : ""}${totalGainLossPercent.toFixed(2)}%`}
+        </p>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Best Performer</p>
         {bestPerformer ? (
           <>
-            <p className="text-white text-xl font-bold">{bestPerformer.symbol}</p>
-            <p className="text-green-500 text-sm">
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{bestPerformer.symbol}</p>
+            <p className="text-sm text-green-500">
               +{(bestPerformer.liveGainLossPercent ?? bestPerformer.gainLossPercent).toFixed(2)}%
             </p>
           </>
         ) : (
-          <p className="text-gray-500">No holdings yet</p>
+          <p className="text-gray-500 dark:text-gray-400">N/A</p>
         )}
       </div>
 
-      <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-        <h3 className="text-gray-400 text-sm mb-2">Worst Performer</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Worst Performer</p>
         {worstPerformer ? (
           <>
-            <p className="text-white text-xl font-bold">{worstPerformer.symbol}</p>
-            <p className={`text-sm ${(worstPerformer.liveGainLossPercent ?? worstPerformer.gainLossPercent) >= 0 ? "text-green-500" : "text-red-500"}`}>
-              {(worstPerformer.liveGainLossPercent ?? worstPerformer.gainLossPercent) >= 0 ? "+" : ""}
+            <p className="text-xl font-bold text-gray-900 dark:text-white">{worstPerformer.symbol}</p>
+            <p className="text-sm text-red-500">
               {(worstPerformer.liveGainLossPercent ?? worstPerformer.gainLossPercent).toFixed(2)}%
             </p>
           </>
         ) : (
-          <p className="text-gray-500">No holdings yet</p>
+          <p className="text-gray-500 dark:text-gray-400">N/A</p>
         )}
       </div>
     </div>

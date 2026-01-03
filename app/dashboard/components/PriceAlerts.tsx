@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { usePriceAlerts, PriceAlert } from "@/lib/hooks/usePriceAlerts";
-import { Holding } from "@/lib/hooks/useHoldings";
+import { Holding } from "@/types";
+import { usePriceAlerts } from "@/lib/hooks/usePriceAlerts";
 
 interface PriceAlertsProps {
   holdings: Holding[];

@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { Holding } from "@/lib/hooks/useHoldings";
+import React, { useEffect, useState } from "react";
+import { Holding } from "@/types";
+import LoadingSpinner from "@/components/LoadingSpinner";
 
 interface NewsArticle {
   id: number;
@@ -23,133 +24,84 @@ const PortfolioNews: React.FC<PortfolioNewsProps> = ({ holdings }) => {
   const [error, setError] = useState<string | null>(null);
   const [selectedSymbol, setSelectedSymbol] = useState<string>("all");
 
-  const fetchNews = useCallback(async (symbol?: string) => {
+  useEffect(() => {
+    fetchNews();
+  }, [selectedSymbol]);
+
+  const fetchNews = async () => {
     setLoading(true);
-    setError(null);
-
     try {
-      const symbols = symbol && symbol !== "all"
-        ? [symbol]
-        : holdings.map(h => h.symbol).slice(0, 5); // Limit to 5 to avoid rate limiting
-
-      const newsPromises = symbols.map(async (sym) => {
-        const res = await fetch(`/api/stock/news?symbol=${sym}`);
-        if (!res.ok) throw new Error(`Failed to fetch news for ${sym}`);
-        return res.json();
-      });
-
-      const results = await Promise.all(newsPromises);
-      const allNews = results.flat();
-
-      // Remove duplicates and sort by date
-      const uniqueNews = allNews.reduce((acc: NewsArticle[], article: NewsArticle) => {
-        if (!acc.find(a => a.id === article.id)) {
-          acc.push(article);
-        }
-        return acc;
-      }, []);
-
-      uniqueNews.sort((a: { datetime: number; }, b: { datetime: number; }) => b.datetime - a.datetime);
-      setNews(uniqueNews.slice(0, 10)); // Show top 10 articles
+      const url =
+        selectedSymbol === "all"
+          ? "/api/stock/news"
+          : `/api/stock/news?symbol=${selectedSymbol}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      setNews(data.news || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch news");
+      setError("Failed to fetch news");
     } finally {
       setLoading(false);
     }
-  }, [holdings]);
-
-  useEffect(() => {
-    if (holdings.length > 0) {
-      fetchNews(selectedSymbol);
-    }
-  }, [holdings, selectedSymbol, fetchNews]);
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp * 1000).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   };
 
-  if (holdings.length === 0) {
-    return (
-      <div className="rounded-lg border bg-card p-6">
-        <h2 className="text-lg text-white font-semibold mb-4">Portfolio News</h2>
-        <p className="text-white text-muted-foreground">Add holdings to see relevant news.</p>
-      </div>
-    );
-  }
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp * 1000).toLocaleDateString();
+  };
 
   return (
-    <div className="rounded-lg border bg-card p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Portfolio News</h2>
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Market News</h2>
         <select
           value={selectedSymbol}
-          onChange={(e) =>setSelectedSymbol(e.target.value)}
-          className="rounded-md border bg-background px-3 py-1.5 text-sm"
+          onChange={(e) => setSelectedSymbol(e.target.value)}
+          className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1 text-gray-900 dark:text-white text-sm"
         >
-          <option value="all">All Holdings</option>
-          {holdings.map((holding) => (
-            <option key={holding.symbol} value={holding.symbol}>
-              {holding.symbol}
+          <option value="all">All News</option>
+          {holdings.map((h) => (
+            <option key={h.symbol} value={h.symbol}>
+              {h.symbol}
             </option>
           ))}
         </select>
       </div>
 
-      {loading && (
-        <div className="flex items-center justify-between py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-        </div>
-      )}
-
-      {error && (
-        <div className="text-destructive text-sm py-4">{error}</div>
-      )}
-
-      {!loading && !error && news.length === 0 && (
-        <p className="text-muted-foreground">No news available.</p>
-      )}
-
-      {!loading && !error && news.length > 0 && (
-        <div className="space-y-4">
-          {news.map((article) => (
-            <a
-              key={article.id}
-              href={article.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block rounded-lg border p-4 hover:bg-accent transition-colors"
-            >
-              <div className="flex gap-4">
-                {article.image && (
-                  <img 
-                    src={article.image}
-                    alt=""
-                    className="w-20 h-20 object-cover rounded-md flex-shrink-0"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-medium text-sm line-clamp-2 mb-1">
-                    {article.headline}
-                  </h3>
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                    {article.summary}
-                  </p>
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>{article.source}</span>
-                    <span>•</span>
-                    <span>{formatDate(article.datetime)}</span>
-                  </div>
+      <div className="max-h-96 overflow-y-auto">
+        {loading ? (
+          <div className="p-8 flex justify-center">
+            <LoadingSpinner text="Loading news..." />
+          </div>
+        ) : error ? (
+          <div className="p-4 text-red-500">{error}</div>
+        ) : news.length === 0 ? (
+          <div className="p-8 text-center text-gray-500 dark:text-gray-400">No news available</div>
+        ) : (
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+            {news.map((article) => (
+              <a
+                key={article.id}
+                href={article.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+              >
+                <h3 className="font-medium text-gray-900 dark:text-white mb-1 line-clamp-2">
+                  {article.headline}
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">
+                  {article.summary}
+                </p>
+                <div className="flex items-center gap-2 text-xs text-gray-400 dark:text-gray-500">
+                  <span>{article.source}</span>
+                  <span>•</span>
+                  <span>{formatDate(article.datetime)}</span>
                 </div>
-              </div>
-            </a>
-          ))}
-        </div>
-      )}
+              </a>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };

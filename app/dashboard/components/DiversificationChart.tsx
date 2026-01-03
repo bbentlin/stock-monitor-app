@@ -1,9 +1,9 @@
 "use client";
 
 import React from "react";
-import { Pie } from "react-chartjs-2";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
-import { Holding } from "@/lib/hooks/useHoldings";
+import { Doughnut } from "react-chartjs-2";
+import { Holding } from "@/types";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -12,15 +12,26 @@ interface DiversificationChartProps {
 }
 
 const COLORS = [
-  "#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6",
-  "#EC4899", "#06B6D4", "#84CC16", "#F97316", "#6366F1",
+  "#3B82F6",
+  "#10B981",
+  "#F59E0B",
+  "#EF4444",
+  "#8B5CF6",
+  "#EC4899",
+  "#06B6D4",
+  "#84CC16",
+  "#F97316",
+  "#6366F1",
 ];
 
 const DiversificationChart: React.FC<DiversificationChartProps> = ({ holdings }) => {
   if (holdings.length === 0) {
     return (
-      <div className="text-gray-400 text-center py-8">
-        Add holdings to see portfolio diversification.
+      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Diversification</h2>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500 dark:text-gray-400">No holdings to display</p>
+        </div>
       </div>
     );
   }
@@ -28,13 +39,13 @@ const DiversificationChart: React.FC<DiversificationChartProps> = ({ holdings })
   const totalValue = holdings.reduce((sum, h) => sum + h.value, 0);
 
   const data = {
-    labels: holdings.map(h => h.symbol),
+    labels: holdings.map((h) => h.symbol),
     datasets: [
       {
-        data: holdings.map(h => h.value),
+        data: holdings.map((h) => h.value),
         backgroundColor: COLORS.slice(0, holdings.length),
-        borderColor: "#1F2937",
-        borderWidth: 2,
+        borderColor: "transparent",
+        borderWidth: 0,
       },
     ],
   };
@@ -47,19 +58,8 @@ const DiversificationChart: React.FC<DiversificationChartProps> = ({ holdings })
         position: "right" as const,
         labels: {
           color: "#9CA3AF",
-          generateLabels: (chart: any) => {
-            const dataset = chart.data.datasets[0];
-            return chart.data.labels.map((label: string, i: number) => {
-              const value = dataset.data[i];
-              const percentage = ((value / totalValue) * 100).toFixed(1);
-              return {
-                text: `${label} (${percentage}%)`,
-                fillStyle: dataset.backgroundColor[i],
-                hidden: false,
-                index: i,
-              };
-            });
-          },
+          usePointStyle: true,
+          padding: 15,
         },
       },
       tooltip: {
@@ -67,16 +67,20 @@ const DiversificationChart: React.FC<DiversificationChartProps> = ({ holdings })
           label: (context: any) => {
             const value = context.raw;
             const percentage = ((value / totalValue) * 100).toFixed(1);
-            return `$${value.toFixed(2)} (${percentage})`;
+            return `$${value.toFixed(2)} (${percentage}%)`;
           },
         },
       },
     },
+    cutout: "60%",
   };
 
   return (
-    <div style={{ height: "300px" }}>
-      <Pie data={data} options={options} />
+    <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
+      <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Diversification</h2>
+      <div className="h-64">
+        <Doughnut data={data} options={options} />
+      </div>
     </div>
   );
 };

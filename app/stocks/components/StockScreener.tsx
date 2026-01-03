@@ -46,18 +46,18 @@ const StockScreener: React.FC<StockScreenerProps> = ({ onAddToWatchlist }) => {
   };
 
   return (
-    <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 mb-6">
-      <h2 className="text-2xl font-bold text-white mb-4">Stock Screener</h2>
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700 mb-6">
+      <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Stock Screener</h2>
       <input
         type="text"
         value={searchTerm}
         onChange={handleSearchChange}
         placeholder="Search for stocks (e.g., Apple, Tesla, Nvidia)"
-        className="w-full p-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 mb-4"
+        className="w-full p-3 bg-gray-50 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 mb-4"
       />
 
       {loading && (
-        <div className="text-gray-400 text-center py-4">Searching...</div>
+        <div className="text-gray-500 dark:text-gray-400 text-center py-4">Searching...</div>
       )}
 
       {error && (
@@ -70,12 +70,12 @@ const StockScreener: React.FC<StockScreenerProps> = ({ onAddToWatchlist }) => {
             <Link
               key={stock.symbol}
               href={`/stocks/${stock.symbol}`}
-              className="flex items-center justify-between p-4 bg-gray-900 rounded-lg border border-gray-700 hover:border-blue-500 hover:bg-gray-800 transition-colors cursor-pointer"
+              className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
             >
               <div>
-                <div className="text-white font-semibold text-lg">{stock.symbol}</div>
-                <div className="text-gray-400 text-sm">{stock.name}</div>
-                <div className="text-gray-500 text-xs">{stock.type}</div>
+                <div className="text-gray-900 dark:text-white font-semibold text-lg">{stock.symbol}</div>
+                <div className="text-gray-500 dark:text-gray-400 text-sm">{stock.name}</div>
+                <div className="text-gray-400 dark:text-gray-500 text-xs">{stock.type}</div>
               </div>
               <div className="flex items-center gap-2">
                 {addedSymbols.has(stock.symbol) ? (
@@ -102,13 +102,13 @@ const StockScreener: React.FC<StockScreenerProps> = ({ onAddToWatchlist }) => {
       )}
 
       {searchTerm.length >= 2 && !loading && results.length === 0 && !error && (
-        <div className="text-gray-400 text-center py-8">
+        <div className="text-gray-500 dark:text-gray-400 text-center py-8">
           No results found for "{searchTerm}"
         </div>
       )}
 
       {searchTerm.length === 0 && (
-        <div className="text-gray-500 text-center py-8">
+        <div className="text-gray-400 dark:text-gray-500 text-center py-8">
           Start typing to search for stocks
         </div>
       )}
