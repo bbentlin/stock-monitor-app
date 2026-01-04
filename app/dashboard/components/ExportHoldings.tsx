@@ -58,7 +58,7 @@ const ExportHoldings: React.FC<ExportHoldingsProps> = ({ holdings }) => {
     <button
       onClick={exportToCSV}
       disabled={holdings.length === 0}
-      className="inline-flex items-center gap-2 rounded-md border border-gray-600 bg-gray-700 px-4 py-2 text-sm text-white hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="inline-flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-4 py-2 text-sm text-gray-700 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"

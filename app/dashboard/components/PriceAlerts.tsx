@@ -63,13 +63,13 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
   };
 
   return (
-    <div className="rounded-lg border bg-card p-6">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">Price Alert</h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Price Alert</h2>
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="rounded-md bg-blue-600  hover:bg-blue-700  px-3 py-1.5 text-sm text-white transition-colors"
           >
             + Add Alert
           </button>
@@ -77,16 +77,16 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
       </div>
       
       {isAdding && (
-        <form onSubmit={handleSubmit} className="mb-6 p-4 rounded-lg border bg-muted/50">
+        <form onSubmit={handleSubmit} className="mb-6 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Symbol</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Symbol</label>
               <select
                 value={formData.symbol}
                 onChange={(e) => setFormData({ ...formData, symbol: e.target.value })}
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
               >
-                <option value="">Selecet Symbol</option>
+                <option value="">Select Symbol</option>
                 {holdings.map((holding) => (
                   <option key={holding.symbol} value={holding.symbol}>
                     {holding.symbol} ({formatPrice(holding.currentPrice || 0)})
@@ -96,13 +96,13 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Condition</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Condition</label>
               <select
                 value={formData.condition}
                 onChange={(e) =>
                   setFormData({ ...formData, condition: e.target.value as "above" | "below" })
                 }
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
               >
                 <option value="above">Price goes above</option>
                 <option value="below">Price goes below</option>
@@ -110,7 +110,7 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Target Price ($)</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Target Price ($)</label>
               <input 
                 type="number"
                 step="0.01"
@@ -118,19 +118,19 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
                 value={formData.targetPrice}
                 onChange={(e) => setFormData({ ...formData, targetPrice: e.target.value })}
                 placeholder="0.00"
-                className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
               />
             </div>
           </div>
 
           {formError && (
-            <p className="text-destructive text-sm mb-4">{formError}</p>
+            <p className="text-red-500 text-sm mb-4">{formError}</p>
           )}
 
           <div className="flex gap-2">
             <button
               type="submit"
-              className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="rounded-md bg-blue-600 hover:bg-blue-700 px-4 py-2 text-sm text-white transition-colors"
             >
               Create Alert
             </button>
@@ -141,7 +141,7 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
                 setFormError(null);
                 setFormData({ symbol: "", targetPrice: "", condition: "above" });
               }}
-              className="rounded-md border px-4 py-2 text-sm hover:bg-accent transition-colors"
+              className="rounded-md border border-gray-300 dark:border-gray-600 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
             >
               Cancel
             </button>
@@ -150,7 +150,7 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
       )}
 
       {alerts.length === 0 && !isAdding && (
-        <p className="text-muted-foreground text-sm">
+        <p className="text-gray-500 dark:text-gray-400 text-sm">
           No price alerts set. Create one to get notified when a stock reaches your target price.
         </p>
       )}
@@ -168,24 +168,26 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
               <div
                 key={alert.id}
                 className={`flex items-center justify-between p-3 rounded-lg border ${
-                  isTriggered ? "border-green-500" : "bg-muted-foreground"
+                  isTriggered
+                    ? "border-green-500 bg-green-50 dark:bg-green-900/20"
+                    : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50"
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div 
                     className={`w-2 h-2 rounded-full ${
-                      isTriggered ? "background-green-500" : "bg-muted-foreground"  
+                      isTriggered ? "bg-green-500" : "bg-gray-400 dark:bg-gray-500"  
                     }`}
                   />
                   <div>
-                    <div className="font-medium text-sm">
+                    <div className="font-medium text-sm text-gray-900 dark:text-white">
                       {alert.symbol}
-                      <span className="text-muted-foreground font-normal ml-2">
+                      <span className="text-gray-500 dark:text-gray-400 font-normal ml-2">
                         {alert.condition === "above" ? "↑" : "↓"} {formatPrice(alert.targetPrice)}
                       </span>
                     </div>
                     {currentPrice && (
-                      <div className="text-sm text-muted-foreground">
+                      <div className="text-sm text-gray-500 dark:text-gray-400">
                         Current: {formatPrice(currentPrice)}
                         {isTriggered && (
                           <span className="text-green-500 ml-2">• Price Alert!</span>
@@ -197,7 +199,7 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
 
                 <button
                   onClick={() => handleDelete(alert.id)}
-                  className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                  className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors p-1"
                   title="Delete alert"
                 >
                   <svg
