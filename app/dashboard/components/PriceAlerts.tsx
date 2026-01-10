@@ -1,15 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Holding } from "@/types";
 import { usePriceAlerts } from "@/lib/hooks/usePriceAlerts";
+import { useWebSocket } from "@/lib/context/WebSocketContext";
 
 interface PriceAlertsProps {
   holdings: Holding[];
 }
 
 const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
-  const { alerts, addAlert, removeAlert } = usePriceAlerts();
+  const { alerts, addAlert, removeAlert, checkAlertsWithPrices, getActiveAlertSymbols } = usePriceAlerts();
+  const { prices: wsPrices, connected, subscribe, unsubscribe } = useWebSocket();
+
   const [isAdding, setIsAdding] = useState(false);
   const [formData, setFormData] = useState({
     symbol: "",
@@ -18,12 +21,39 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
   });
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Request notification permission on mount
+  useEffect(() => {
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Subscribe to symbols with active alerts
+  useEffect(() => {
+    const symbols = getActiveAlertSymbols();
+    if (symbols.length > 0) {
+      subscribe(symbols);
+    }
+    return () => {
+      if (symbols.length > 0) {
+        unsubscribe(symbols);
+      }
+    };
+  }, [getActiveAlertSymbols, subscribe, unsubscribe]);
+
+  // Check alerts whenever WebSocket prices update
+  useEffect(() => {
+    if (Object.keys(wsPrices).length > 0) {
+      checkAlertsWithPrices(wsPrices);
+    }
+  }, [wsPrices, checkAlertsWithPrices]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
     if (!formData.symbol) {
-      setFormError("Please select a symbol")
+      setFormError("Please select a symbol");
       return;
     }
 
@@ -50,7 +80,9 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
     }
   };
 
-  const getSymbolPrice = (symbol: string) => {
+  const getCurrentPrice = (symbol: string) => {
+    // Prefer WebSocket price, fallback to holding price
+    if (wsPrices[symbol]) return wsPrices[symbol];
     const holding = holdings.find((h) => h.symbol === symbol);
     return holding?.currentPrice;
   };
@@ -65,17 +97,24 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Price Alert</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Price Alerts</h2>
+          {/* WebSocket status indicator */}
+          <div 
+            className={`w-2 h-2 rounded-full ${connected ? "bg-green-500" : "bg-yellow-500"}`}
+            title={connected ? "Live updates active" : "Connecting..."}
+          />
+        </div>
         {!isAdding && (
           <button
             onClick={() => setIsAdding(true)}
-            className="rounded-md bg-blue-600  hover:bg-blue-700  px-3 py-1.5 text-sm text-white transition-colors"
+            className="rounded-md bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-sm text-white transition-colors"
           >
             + Add Alert
           </button>
         )}
       </div>
-      
+
       {isAdding && (
         <form onSubmit={handleSubmit} className="mb-6 p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
@@ -89,7 +128,7 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
                 <option value="">Select Symbol</option>
                 {holdings.map((holding) => (
                   <option key={holding.symbol} value={holding.symbol}>
-                    {holding.symbol} ({formatPrice(holding.currentPrice || 0)})
+                    {holding.symbol} ({formatPrice(getCurrentPrice(holding.symbol) || holding.currentPrice)})
                   </option>
                 ))}
               </select>
@@ -97,11 +136,9 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Condition</label>
-              <select
+              <select 
                 value={formData.condition}
-                onChange={(e) =>
-                  setFormData({ ...formData, condition: e.target.value as "above" | "below" })
-                }
+                onChange={(e) => setFormData({ ...formData, condition: e.target.value as "above" | "below" })}
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
               >
                 <option value="above">Price goes above</option>
@@ -123,9 +160,7 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
             </div>
           </div>
 
-          {formError && (
-            <p className="text-red-500 text-sm mb-4">{formError}</p>
-          )}
+          {formError && <p className="text-red-500 text-sm mb-4">{formError}</p>}
 
           <div className="flex gap-2">
             <button
@@ -158,14 +193,15 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
       {alerts.length > 0 && (
         <div className="space-y-3">
           {alerts.map((alert) => {
-            const currentPrice = getSymbolPrice(alert.symbol);
+            const currentPrice = getCurrentPrice(alert.symbol);
             const isTriggered = 
-              currentPrice &&
-              ((alert.condition === "above" && currentPrice >= alert.targetPrice) ||
-                (alert.condition === "below" && currentPrice <= alert.targetPrice));
+              alert.triggered || 
+              (currentPrice && 
+                ((alert.condition === "above" && currentPrice >= alert.targetPrice) ||
+                  (alert.condition === "below" && currentPrice <= alert.targetPrice)));
 
             return (
-              <div
+              <div 
                 key={alert.id}
                 className={`flex items-center justify-between p-3 rounded-lg border ${
                   isTriggered
@@ -176,22 +212,20 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
                 <div className="flex items-center gap-3">
                   <div 
                     className={`w-2 h-2 rounded-full ${
-                      isTriggered ? "bg-green-500" : "bg-gray-400 dark:bg-gray-500"  
+                      isTriggered ? "bg-green-500 animate-pulse" : "bg-gray-400 dark:bg-gray-500"
                     }`}
                   />
                   <div>
                     <div className="font-medium text-sm text-gray-900 dark:text-white">
                       {alert.symbol}
                       <span className="text-gray-500 dark:text-gray-400 font-normal ml-2">
-                        {alert.condition === "above" ? "↑" : "↓"} {formatPrice(alert.targetPrice)}
+                        {alert.condition === "above" ? "⬆" : "⬇"} {formatPrice(alert.targetPrice)}
                       </span>
                     </div>
                     {currentPrice && (
                       <div className="text-sm text-gray-500 dark:text-gray-400">
                         Current: {formatPrice(currentPrice)}
-                        {isTriggered && (
-                          <span className="text-green-500 ml-2">• Price Alert!</span>
-                        )}
+                        {isTriggered && <span className="text-green-500 ml-2">• Alert Triggered!</span>}
                       </div>
                     )}
                   </div>
@@ -202,17 +236,7 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
                   className="text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 transition-colors p-1"
                   title="Delete alert"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="16"
-                    height="16"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"  
-                  >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M3 6h18" />
                     <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
                     <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
