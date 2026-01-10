@@ -114,22 +114,59 @@ export const usePriceAlerts = () => {
           notifiedAlertsRef.current.add(alert.id);
 
           // Show browser notification
-          
+          if (typeof window !== "undefined" && Notification.permission === "granted") {
+            const direction = alert.condition === "above" ? "above" : "below";
+            new Notification(`🔔 Price Alert: ${alert.symbol}`, {
+              body: `${alert.symbol} is now ${direction} $${alert.targetPrice.toFixed(2)}\nCurrent price: $${currentPrice.toFixed(2)}`,
+              icon: "/favicon.ico",
+              tag: alert.id, // Prevents duplicate notifications
+              requireInteraction: true,
+            });
+          }
+
+          // Play sound (optional)
+          try {
+            const audio = new Audio("/alert-sound.mp3");
+            audio.volume = 0.5;
+            audio.play().catch(() => {}); // Ignore if autoplay blocked
+          } catch {}
+
+          return {
+            ...alert,
+            triggered: true,
+            triggeredAt: new Date().toISOString(),
+          };
         }
-      })
-    }
+
+        return alert;
+      });
+
+      if (hasChanges) {
+        saveAlerts(updatedAlerts);
+      }
+    },
+    [alerts, isLoaded, saveAlerts]
   );
 
-  // Get symbols that need monitoring
+  // Get symbols that need monitoringn (only non-triggered alerts)
   const getActiveAlertSymbols = useCallback(() => {
     return Array.from(new Set(alerts.filter((a) => !a.triggered).map((a) => a.symbol)));
   }, [alerts]);
 
+  // Get count of active (non-triggered) alerts
+  const activeAlertCount = alerts.filter((a) => !a.triggered).length;
+  const triggeredAlertCount = alerts.filter((a) => a.triggered).length;
+
   return {
     alerts, 
+    isLoaded,
     addAlert,
     removeAlert,
+    resetAlert,
+    clearTriggeredAlerts,
     checkAlertsWithPrices,
     getActiveAlertSymbols,
+    activeAlertCount,
+    triggeredAlertCount,
   };
 };
