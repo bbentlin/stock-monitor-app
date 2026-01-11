@@ -36,8 +36,12 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectAttemptsRef = useRef(0);
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
   const pendingSubscriptionsRef = useRef<Set<string>>(new Set());
+
+  const MAX_RECONNECT_ATTEMPTS = 5;
+  const RECONNECT_DELAY = 5000;
 
   const connect = useCallback(() => {
     const apiKey = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
@@ -58,6 +62,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         console.log("WebSocket connected");
         setConnected(true);
         setError(null);
+        reconnectAttemptsRef.current = 0;
 
         // Subscribe to pending symbols
         pendingSubscriptionsRef.current.forEach((symbol) => {
@@ -72,21 +77,24 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           const message = JSON.parse(event.data);
 
           if (message.type === "trade" && message.data) {
-            const updates: Record<string, number> = {};
-            const tradeUpdates: Record<string, Trade> = {};
+            const newPrices: Record<string, number> = {};
+            const newTrades: Record<string, Trade> = {};
 
-            message.data.forEach((trade: { s: string; p: number; t: number; v: number }) => {
-              updates[trade.s] = trade.p;
-              tradeUpdates[trade.s] = {
-                symbol: trade.s,
-                price: trade.p,
-                timestamp: trade.t,
-                volume: trade.v,
-              };
-            });
+            message.data.forEach(
+              (trade: { s: string; p: number; t: number; v: number }) => {
+                const symbol = trade.s;
+                newPrices[symbol] = trade.p;
+                newTrades[symbol] = {
+                  symbol,
+                  price: trade.p,
+                  timestamp: trade.t,
+                  volume: trade.v,
+                };
+              }
+            );
 
-            setPrices((prev) => ({ ...prev, ...updates }));
-            setLastTrades((prev) => ({ ...prev, ...tradeUpdates }));
+            setPrices((prev) => ({ ...prev, ...newPrices }));
+            setLastTrades((prev) => ({ ...prev, ...newTrades }));
           }
         } catch (err) {
           console.error("Error parsing WebSocket message:", err);
@@ -101,6 +109,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       ws.onclose = (event) => {
         console.log("WebSocket closed:", event.code);
         setConnected(false);
+        wsRef.current = null;
 
         // Move subscribed symbols to pending for reconnection
         subscribedSymbolsRef.current.forEach((symbol) => {
@@ -108,12 +117,15 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         });
         subscribedSymbolsRef.current.clear();
 
-        // Attempt to reconnect after 5 seconds
-        if (!event.wasClean) {
-          reconnectTimeoutRef.current = setTimeout(() => {
-            console.log("Attempting to reconnect...");
-            connect();
-          }, 5000);
+        // Attempt to reconnect if not a clean close
+        if (!event.wasClean && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+          reconnectAttemptsRef.current++;
+          console.log(
+            `Attempting to reconnect (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})...`
+          );
+          reconnectTimeoutRef.current = setTimeout(connect, RECONNECT_DELAY);
+        } else if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
+          setError("Failed to reconnect after multiple attempts");
         }
       };
 
@@ -147,8 +159,13 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     symbols.forEach((symbol) => {
       const upperSymbol = symbol.toUpperCase();
 
-      if (wsRef.current?.readyState === WebSocket.OPEN && subscribedSymbolsRef.current.has(upperSymbol)) {
-        wsRef.current.send(JSON.stringify({ type: "unsubscribe", symbol: upperSymbol }));
+      if (
+        wsRef.current?.readyState === WebSocket.OPEN &&
+        subscribedSymbolsRef.current.has(upperSymbol)
+      ) {
+        wsRef.current.send(
+          JSON.stringify({ type: "unsubscribe", symbol: upperSymbol })
+        );
         subscribedSymbolsRef.current.delete(upperSymbol);
       }
 
