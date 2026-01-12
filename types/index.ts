@@ -1,5 +1,5 @@
 export interface Holding {
-  id?: string;
+  id: string;
   symbol: string;
   name: string;
   shares: number;
@@ -43,6 +43,7 @@ export interface PriceAlert {
   targetPrice: number;
   condition: "above" | "below";
   triggered: boolean;
+  triggeredAt?: string;
   createdAt: string;
 }
 
