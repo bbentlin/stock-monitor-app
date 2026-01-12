@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { playAlertSound } from "@/lib/utils/alertSound";
 
 export interface PriceAlert {
   id: string;
@@ -113,23 +114,19 @@ export const usePriceAlerts = () => {
           hasChanges = true;
           notifiedAlertsRef.current.add(alert.id);
 
+          // Play alert sound using Web Audio API
+          playAlertSound();
+
           // Show browser notification
           if (typeof window !== "undefined" && Notification.permission === "granted") {
             const direction = alert.condition === "above" ? "above" : "below";
             new Notification(`🔔 Price Alert: ${alert.symbol}`, {
               body: `${alert.symbol} is now ${direction} $${alert.targetPrice.toFixed(2)}\nCurrent price: $${currentPrice.toFixed(2)}`,
               icon: "/favicon.ico",
-              tag: alert.id, // Prevents duplicate notifications
+              tag: alert.id,
               requireInteraction: true,
             });
           }
-
-          // Play sound (optional)
-          try {
-            const audio = new Audio("/alert-sound.mp3");
-            audio.volume = 0.5;
-            audio.play().catch(() => {}); // Ignore if autoplay blocked
-          } catch {}
 
           return {
             ...alert,
@@ -148,7 +145,7 @@ export const usePriceAlerts = () => {
     [alerts, isLoaded, saveAlerts]
   );
 
-  // Get symbols that need monitoringn (only non-triggered alerts)
+  // Get symbols that need monitoring (only non-triggered alerts)
   const getActiveAlertSymbols = useCallback(() => {
     return Array.from(new Set(alerts.filter((a) => !a.triggered).map((a) => a.symbol)));
   }, [alerts]);
