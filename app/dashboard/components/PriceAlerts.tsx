@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Holding } from "@/types";
 import { usePriceAlerts } from "@/lib/hooks/usePriceAlerts";
 import { useWebSocket } from "@/lib/context/WebSocketContext";
+import { playAlertSound, initAudioContext } from "@/lib/utils/alertSound";
 
 interface PriceAlertsProps {
   holdings: Holding[];
@@ -20,6 +21,16 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
     condition: "above" as "above" | "below",
   });
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Initialize audio context on first user interaction
+  useEffect(() => {
+    const handleInteraction = () => {
+      initAudioContext();
+      window.removeEventListener("click", handleInteraction);
+    };
+    window.addEventListener("click", handleInteraction);
+    return () => window.removeEventListener("click", handleInteraction);
+  }, []);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -105,14 +116,24 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
             title={connected ? "Live updates active" : "Connecting..."}
           />
         </div>
-        {!isAdding && (
+        <div className="flex items-center gap-2">
+          {/* Test Sound Button */}
           <button
-            onClick={() => setIsAdding(true)}
-            className="rounded-md bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-sm text-white transition-colors"
+            onClick={playAlertSound}
+            className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            title="Test alert sound"
           >
-            + Add Alert
+            🔊 Test
           </button>
-        )}
+          {!isAdding && (
+            <button
+              onClick={() => setIsAdding(true)}
+              className="rounded-md bg-blue-600 hover:bg-blue-700 px-3 py-1.5 text-sm text-white transition-colors"
+            >
+              + Add Alert
+            </button>
+          )}
+        </div>
       </div>
 
       {isAdding && (

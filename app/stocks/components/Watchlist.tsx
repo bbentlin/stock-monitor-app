@@ -3,100 +3,155 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { WatchlistStock } from "@/lib/hooks/useWatchlist";
+import { useWebSocket } from "@/lib/context/WebSocketContext";
 
 interface WatchlistProps {
   stocks: WatchlistStock[];
   onRemove: (symbol: string) => void;
 }
 
-interface StockPrice {
+interface StockQuoteData {
   currentPrice: number;
   change: number;
   changePercent: number;
 }
 
 const Watchlist: React.FC<WatchlistProps> = ({ stocks, onRemove }) => {
-  const [prices, setPrices] = useState<Record<string, StockPrice>>({});
+  const [quoteData, setQuoteData] = useState<Record<string, StockQuoteData>>({});
   const [loadingPrices, setLoadingPrices] = useState(false);
 
+  // WebSocket for real-time price updates
+  const { prices: wsPrices, connected, subscribe, unsubscribe } = useWebSocket();
+
+  // Subscribe to WebSocket for real-time prices
   useEffect(() => {
-    const fetchPrices = async () => {
+    const symbols = stocks.map((s) => s.symbol);
+    if (symbols.length > 0) {
+      subscribe(symbols);
+    }
+    return () => {
+      if (symbols.length > 0) {
+        unsubscribe(symbols);
+      }
+    };
+  }, [stocks, subscribe, unsubscribe]);
+
+  // Fetch daily change data from API (less frequently)
+  useEffect(() => {
+    const fetchQuotes = async () => {
       if (stocks.length === 0) return;
 
       setLoadingPrices(true);
-      const newPrices: Record<string, StockPrice> = {};
+      const newQuotes: Record<string, StockQuoteData> = {};
 
-      // Fetch prices for all stocks (with rate limiting)
       for (const stock of stocks) {
         try {
           const response = await fetch(`/api/stock/quote?symbol=${stock.symbol}`);
           if (response.ok) {
             const data = await response.json();
-            newPrices[stock.symbol] = {
+            newQuotes[stock.symbol] = {
               currentPrice: data.currentPrice,
               change: data.change,
               changePercent: data.changePercent,
             };
           }
         } catch (err) {
-          console.error(`Error fetching price for ${stock.symbol}`, err);
+          console.error(`Error fetching quote for ${stock.symbol}`, err);
         }
-        // Small delay to avoid rate limiting
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 100));
       }
 
-      setPrices(newPrices);
+      setQuoteData(newQuotes);
       setLoadingPrices(false);
     };
 
-    fetchPrices();
+    fetchQuotes();
 
-    // Refresh prices every 60 seconds
-    const interval = setInterval(fetchPrices, 60000);
+    // Refresh quotes less often when WebSocket is connected
+    const interval = setInterval(fetchQuotes, connected ? 300000 : 60000);
     return () => clearInterval(interval);
-  }, [stocks]);
+  }, [stocks, connected]);
+
+  // Get the best available price (WebSocket > API)
+  const getCurrentPrice = (symbol: string): number | undefined => {
+    return wsPrices[symbol] ?? quoteData[symbol]?.currentPrice;
+  };
 
   return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Watchlist</h2>
-        {loadingPrices && (
-          <span className="text-gray-500 dark:text-gray-400 text-sm">Updating prices...</span>
-        )}
+        <div className="flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Watchlist</h2>
+          <div
+            className={`w-2 h-2 rounded-full ${connected ? "bg-green-500" : "bg-yellow-500"}`}
+            title={connected ? "Live prices" : "Connecting..."}
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          {loadingPrices && (
+            <span className="text-gray-500 dark:text-gray-400 text-sm">Updating...</span>
+          )}
+          <span className="text-sm text-gray-500 dark:text-gray-400">
+            {stocks.length} {stocks.length === 1 ? "stock" : "stocks"}
+          </span>
+        </div>
       </div>
 
       {stocks.length === 0 ? (
-        <div className="text-gray-500 dark:text-gray-400 text-center py-8"> 
+        <div className="text-gray-500 dark:text-gray-400 text-center py-8">
           Your watchlist is empty. Search for stocks and add them to your watchlist.
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-[500px] overflow-y-auto">
           {stocks.map((stock) => {
-            const price = prices[stock.symbol];
+            const quote = quoteData[stock.symbol];
+            const livePrice = getCurrentPrice(stock.symbol);
+            const isLive = wsPrices[stock.symbol] !== undefined;
+
             return (
               <div
                 key={stock.symbol}
-                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
+                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
               >
                 <Link href={`/stocks/${stock.symbol}`} className="flex-1">
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-gray-900 dark:text-white font-semibold text-lg">{stock.symbol}</span>
-                      <p className="text-gray-500 dark:text-gray-400 text-sm">{stock.name}</p>
+                      <span className="text-gray-900 dark:text-white font-semibold text-lg">
+                        {stock.symbol}
+                      </span>
+                      <p className="text-gray-500 dark:text-gray-400 text-sm truncate max-w-[150px]">
+                        {stock.name}
+                      </p>
                     </div>
-                    {price && (
+                    {livePrice !== undefined && (
                       <div className="text-right mr-4">
-                        <p className="text-gray-900 dark:text-white font-semibold">${price.currentPrice.toFixed(2)}</p>
-                        <p className={`text-sm ${price.change >= 0 ? "text-green-500" : "text-red-500"}`}>
-                          {price.change >= 0 ? "+" : ""}{price.change?.toFixed(2)} ({price.changePercent?.toFixed(2)}%)
-                        </p>
+                        <div className="flex items-center gap-1">
+                          <p className="text-gray-900 dark:text-white font-semibold">
+                            ${livePrice.toFixed(2)}
+                          </p>
+                          {isLive && (
+                            <span className="text-green-500 text-xs" title="Live price">
+                              ●
+                            </span>
+                          )}
+                        </div>
+                        {quote && (
+                          <p
+                            className={`text-sm ${
+                              quote.change >= 0 ? "text-green-500" : "text-red-500"
+                            }`}
+                          >
+                            {quote.change >= 0 ? "+" : ""}
+                            {quote.change?.toFixed(2)} ({quote.changePercent?.toFixed(2)}%)
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
                 </Link>
                 <button
                   onClick={() => onRemove(stock.symbol)}
-                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm transition-colors ml-2"
+                  className="ml-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
                 >
                   Remove
                 </button>

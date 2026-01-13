@@ -8,7 +8,7 @@ import HoldingsTable from "./components/HoldingsTable";
 import AddHoldingForm from "./components/AddHoldingForm";
 import PerformanceChart from "./components/PerformanceChart";
 import DiversificationChart from "./components/DiversificationChart";
-import PortfolioNews from "./components/PortofolioNews";
+import PortfolioNews from "./components/PortfolioNews";
 import PriceAlerts from "./components/PriceAlerts";
 import ExportHoldings from "./components/ExportHoldings";
 import Link from "next/link";
