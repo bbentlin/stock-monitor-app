@@ -1,8 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { Holding } from "@/types";
-import { useLivePrices } from "@/lib/hooks/useLivePrices";
+import { useWebSocket } from "@/lib/context/WebSocketContext";
 
 interface SummaryCardsProps {
   holdings: Holding[];
@@ -10,71 +10,125 @@ interface SummaryCardsProps {
 
 const SummaryCards: React.FC<SummaryCardsProps> = ({ holdings }) => {
   const safeHoldings = holdings || [];
-  const { liveHoldings, liveTotalValue, liveTotalGainLoss, loading } = useLivePrices(safeHoldings);
-  
-  const totalCost = safeHoldings.reduce((sum, h) => sum + (h.shares * h.purchasePrice), 0);
-  const totalGainLossPercent = totalCost > 0 ? (liveTotalGainLoss / totalCost) * 100 : 0;
+  const { prices: wsPrices, connected, subscribe, unsubscribe } = useWebSocket();
+
+  // Subscribe to all holding symbols
+  useEffect(() => {
+    const symbols = safeHoldings.map((h) => h.symbol);
+    if (symbols.length > 0) {
+      subscribe(symbols);
+    }
+    return () => {
+      if (symbols.length > 0) {
+        unsubscribe(symbols);
+      }
+    };
+  }, [safeHoldings, subscribe, unsubscribe]);
+
+  // Calculate live totals
+  const { liveTotalValue, totalCost, liveTotalGainLoss, totalGainLossPercent, liveHoldings } = useMemo(() => {
+    let value = 0;
+    let cost = 0;
+
+    const holdingsWithLive = safeHoldings.map((holding) => {
+      const livePrice = wsPrices[holding.symbol] ?? holding.currentPrice;
+      const liveValue = holding.shares * livePrice;
+      const costBasis = holding.shares * holding.purchasePrice;
+      const liveGainLoss = liveValue - costBasis;
+      const liveGainLossPercent = costBasis > 0 ? (liveGainLoss / costBasis) * 100 : 0;
+
+      value += liveValue;
+      cost += costBasis;
+
+      return {
+        ...holding,
+        livePrice,
+        liveValue,
+        liveGainLoss,
+        liveGainLossPercent,
+      };
+    });
+
+    const gainLoss = value - cost;
+    const gainLossPercent = cost > 0 ? (gainLoss / cost) * 100 : 0;
+
+    return {
+      liveTotalValue: value,
+      totalCost: cost,
+      liveTotalGainLoss: gainLoss,
+      totalGainLossPercent: gainLossPercent,
+      liveHoldings: holdingsWithLive,
+    };
+  }, [safeHoldings, wsPrices]);
 
   const bestPerformer = liveHoldings.length > 0
-    ? liveHoldings.reduce((best, h) => {
-        const percent = h.liveGainLossPercent ?? h.gainLossPercent;
-        const bestPercent = best.liveGainLossPercent ?? best.gainLossPercent;
-        return percent > bestPercent ? h : best;
-      })
+    ? liveHoldings.reduce((best, h) => (h.liveGainLossPercent > best.liveGainLossPercent ? h : best))
     : null;
 
   const worstPerformer = liveHoldings.length > 0
-    ? liveHoldings.reduce((worst, h) => {
-        const percent = h.liveGainLossPercent ?? h.gainLossPercent;
-        const worstPercent = worst.liveGainLossPercent ?? worst.gainLossPercent;
-        return percent < worstPercent ? h : worst;
-      })
+    ? liveHoldings.reduce((worst, h) => (h.liveGainLossPercent < worst.liveGainLossPercent ? h : worst))
     : null;
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+    }).format(value);
+  };
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Value</p>
+      {/* Total Value */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Value</h3>
+          {connected && (
+            <span className="text-green-500 text-xs" title="Live">●</span>
+          )}
+        </div>
         <p className="text-2xl font-bold text-gray-900 dark:text-white">
-          {loading ? "..." : `$${liveTotalValue.toFixed(2)}`}
+          {formatCurrency(liveTotalValue)}
         </p>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Total Gain/Loss</p>
-        <p className={`text-2xl font-bold ${liveTotalGainLoss >= 0 ? "text-gray-500" : "text-red-500"}`}>
-          {loading ? "..." : `$${liveTotalGainLoss >= 0 ? "+" : ""}$${liveTotalGainLoss.toFixed(2)}`}
-        </p>
-        <p className={`text-sm ${totalGainLossPercent >= 0 ? "text-green-500" : "text-red-500"}`}>
-          {loading ? "" : `${totalGainLossPercent >= 0 ? "+" : ""}${totalGainLossPercent.toFixed(2)}%`}
+      {/* Total Cost */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Total Cost</h3>
+        <p className="text-2xl font-bold text-gray-900 dark:text-white">
+          {formatCurrency(totalCost)}
         </p>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Best Performer</p>
-        {bestPerformer ? (
-          <>
-            <p className="text-xl font-bold text-gray-900 dark:text-white">{bestPerformer.symbol}</p>
-            <p className="text-sm text-green-500">
-              +{(bestPerformer.liveGainLossPercent ?? bestPerformer.gainLossPercent).toFixed(2)}%
-            </p>
-          </>
-        ) : (
-          <p className="text-gray-500 dark:text-gray-400">N/A</p>
+      {/* Total Gain/Loss */}
+      <div className="">
+        <h3>Total Gain/Loss</h3>
+        <p>
+          {liveTotalGainLoss >= 0 ? "+" : ""}{formatCurrency(liveTotalGainLoss)}
+        </p>
+        <p>
+          {totalGainLossPercent >= 0 ? "+" : ""}{totalGainLossPercent.toFixed(2)}%
+        </p>
+      </div>
+
+      {/* Best/Worst Performers */}
+      <div>
+        <h3>Top Performers</h3>
+        {bestPerformer && (
+          <div>
+            <span>{bestPerformer.symbol}</span>
+            <span>
+              +{bestPerformer.liveGainLossPercent.toFixed(2)}%
+            </span>
+          </div>
         )}
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">Worst Performer</p>
-        {worstPerformer ? (
-          <>
-            <p className="text-xl font-bold text-gray-900 dark:text-white">{worstPerformer.symbol}</p>
-            <p className="text-sm text-red-500">
-              {(worstPerformer.liveGainLossPercent ?? worstPerformer.gainLossPercent).toFixed(2)}%
-            </p>
-          </>
-        ) : (
-          <p className="text-gray-500 dark:text-gray-400">N/A</p>
+        {worstPerformer && (
+          <div>
+            <span>{worstPerformer.symbol}</span>
+            <span>
+              {worstPerformer.liveGainLossPercent.toFixed(2)}%
+            </span>
+          </div>
         )}
       </div>
     </div>

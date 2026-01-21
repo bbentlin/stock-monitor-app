@@ -1,112 +1,171 @@
 "use client";
 
-import React from "react";
-import { Holding } from "@/lib/hooks/useHoldings";
-import { useLivePrices } from "@/lib/hooks/useLivePrices";
-import Link from "next/link";
+import React, { useEffect } from "react";
+import { Holding } from "@/types";
+import { useWebSocket } from "@/lib/context/WebSocketContext";
+import { usePriceFlash } from "@/lib/hooks/usePriceFlash";
 
 interface HoldingsTableProps {
   holdings: Holding[];
-  onRemove: (lotId: string) => void;
+  onRemove: (id: string) => void;
 }
 
 const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => {
-  const safeHoldings = holdings || [];
-  const { liveHoldings, loading, lastUpdated, error, refresh } = useLivePrices(safeHoldings);
+  const { prices: wsPrices, connected, subscribe, unsubscribe } = useWebSocket();
+  const flashes = usePriceFlash(wsPrices);
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
+  // Subscribe to holding symbols for real-time updates
+  useEffect(() => {
+    const symbols = holdings.map((h) => h.symbol);
+    if (symbols.length > 0) {
+      subscribe(symbols);
+    }
+    return () => {
+      if (symbols.length > 0) {
+        unsubscribe(symbols);
+      }
+    };
+  }, [holdings, subscribe, unsubscribe]);
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+    }).format(value);
   };
 
-  if (safeHoldings.length === 0) {
+  const formatPercent = (value: number) => {
+    return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+  };
+
+  if (holdings.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-xl p-8 text-center border border-gray-200 dark:border-gray-700">
-        <p className="text-gray-600 dark:text-gray-400">No holdings yet. Add your first stock above!</p>
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-8 text-center">
+        <p className="text-gray-500 dark:text-gray-400">
+          No holdings yet. Add your first stock above.
+        </p>
       </div>
     );
   }
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-      <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Holdings</h2>
-        <div className="flex items-center gap-4">
-          {lastUpdated && (
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              Updated: {lastUpdated.toLocaleTimeString()}
-            </span>
-          )}
-          <button
-            onClick={refresh}
-            disabled={loading}
-            className="text-blue-500 hover:text-blue-400 text-sm disabled:opacity-50"
-          >
-            {loading ? "Refreshing..." : "Refresh"}
-          </button>
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-2">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Holdings</h2>
+          <div
+            className={`w-2 h-2 rounded-full ${connected ? "bg-green-500" : "bg-yellow-500"}`}
+            title={connected ? "Live prices" : "Connecting..."}
+          />
         </div>
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          {holdings.length} {holdings.length === 1 ? "position" : "positions"}
+        </span>
       </div>
-
-      {error && (
-        <div className="p-4 bg-yellow-100 dark:bg-yellow-900/30 border-b border-yellow-300 dark:border-yellow-700">
-          <p className="text-yellow-800 dark:text-yellow-200 text-sm">{error}</p>
-        </div>
-      )}
 
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 dark:bg-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Symbol</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Shares</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Avg Cost</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Price</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Value</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Gain/Loss</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Date</th>
-              <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700 dark:text-gray-300">Actions</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Symbol
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Shares
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Avg Cost
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Price
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Value
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Gain/Loss
+              </th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-            {liveHoldings.map((holding) => (
-              <tr key={holding.lotId} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
-                <td className="px-4 py-3">
-                  <Link href={`/stocks/${holding.symbol}`} className="text-blue-500 hover:text-blue-400 font-medium">
-                    {holding.symbol}
-                  </Link>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{holding.name}</p>
-                </td>
-                <td className="px-4 py-3 text-gray-900 dark:text-white">{holding.shares}</td>
-                <td className="px-4 py-3 text-gray-900 dark:text-white">${holding.purchasePrice.toFixed(2)}</td>
-                <td className="px-4 py-3 text-gray-900 dark:text-white">
-                  ${(holding.livePrice || holding.currentPrice).toFixed(2)}
-                </td>
-                <td className="px-4 py-3 text-gray-900 dark:text-white">
-                  ${(holding.liveValue || holding.value).toFixed(2)}
-                </td>
-                <td className="px-4 py-3">
-                  <span className={(holding.liveGainLoss || holding.gainLoss) >= 0 ? "text-green-500" : "text-red-500"}>
-                    {(holding.liveGainLoss || holding.gainLoss) >= 0 ? "+" : ""}
-                    ${(holding.liveGainLoss || holding.gainLoss).toFixed(2)}
-                    <span className="text-sm ml-1">
-                      ({(holding.liveGainLossPercent || holding.gainLossPercent).toFixed(2)}%)
+            {holdings.map((holding) => {
+              // Use WebSocket price if available, otherwise use stored price
+              const livePrice = wsPrices[holding.symbol] ?? holding.currentPrice;
+              const isLive = wsPrices[holding.symbol] !== undefined;
+              const flash = flashes[holding.symbol];
+
+              // Recalculate values with live price
+              const liveValue = holding.shares * livePrice;
+              const costBasis = holding.shares * holding.purchasePrice;
+              const liveGainLoss = liveValue - costBasis;
+              const liveGainLossPercent = costBasis > 0 ? (liveGainLoss / costBasis) * 100 : 0;
+
+              return (
+                <tr
+                  key={holding.id}
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                >
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {holding.symbol}
+                      </span>
+                      {isLive && (
+                        <span className="text-green-500 text-xs" title="Live price">
+                          ●
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {holding.name}
                     </span>
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-sm">
-                  {formatDate(holding.purchaseDate)}
-                </td>
-                <td className="px-4 py-3">
-                  <button
-                    onClick={() => onRemove(holding.lotId)}
-                    className="text-red-500 hover:text-red-400 text-sm"
-                  >
-                    Remove
-                  </button>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-4 py-4 text-right text-gray-900 dark:text-white">
+                    {holding.shares.toLocaleString()}
+                  </td>
+                  <td className="px-4 py-4 text-right text-gray-900 dark:text-white">
+                    {formatCurrency(holding.purchasePrice)}
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    <span
+                      className={`font-medium transition-colors duration-300 ${
+                        flash === "up"
+                          ? "text-green-500"
+                          : flash === "down"
+                          ? "text-red-500"
+                          : "text-gray-900 dark:text-white"
+                      }`}
+                    >
+                      {formatCurrency(livePrice)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 text-right text-gray-900 dark:text-white">
+                    {formatCurrency(liveValue)}
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    <div
+                      className={`${
+                        liveGainLoss >= 0 ? "text-green-500" : "text-red-500"
+                      }`}
+                    >
+                      <div>{formatCurrency(liveGainLoss)}</div>
+                      <div className="text-sm">{formatPercent(liveGainLossPercent)}</div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    <button
+                      onClick={() => onRemove(holding.id)}
+                      className="text-red-500 hover:text-red-700 dark:hover:text-red-400 text-sm font-medium transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
