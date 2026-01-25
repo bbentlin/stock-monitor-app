@@ -101,31 +101,31 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ holdings }) => {
       </div>
 
       {/* Total Gain/Loss */}
-      <div className="">
-        <h3>Total Gain/Loss</h3>
-        <p>
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Total Gain/Loss</h3>
+        <p className={`text-2xl font-bold ${totalGainLossPercent >= 0 ? "text-green-500" : "text-red-500"}`}>
           {liveTotalGainLoss >= 0 ? "+" : ""}{formatCurrency(liveTotalGainLoss)}
         </p>
-        <p>
+        <p className={`text-sm ${totalGainLossPercent >= 0 ? "text-green-500" : "text-red-500"}`}>
           {totalGainLossPercent >= 0 ? "+" : ""}{totalGainLossPercent.toFixed(2)}%
         </p>
       </div>
 
       {/* Best/Worst Performers */}
-      <div>
-        <h3>Top Performers</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Top Performers</h3>
         {bestPerformer && (
-          <div>
-            <span>{bestPerformer.symbol}</span>
-            <span>
+          <div className="mb-2">
+            <span className="text-green-500 font-medium">{bestPerformer.symbol}</span>
+            <span className="text-green-500 text-sm ml-2">
               +{bestPerformer.liveGainLossPercent.toFixed(2)}%
             </span>
           </div>
         )}
         {worstPerformer && (
           <div>
-            <span>{worstPerformer.symbol}</span>
-            <span>
+            <span className="text-red-500 font-medium">{worstPerformer.symbol}</span>
+            <span className="text-red-500 text-sm ml-2">
               {worstPerformer.liveGainLossPercent.toFixed(2)}%
             </span>
           </div>
