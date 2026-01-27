@@ -118,7 +118,7 @@ const MobileNav: React.FC<MobileNavProps> = ({ userEmail, isAuthenticated }) => 
               <Link
                 href="/auth/signin"
                 onClick={closeMenu}
-                className="w-full flext items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
               >
                 Sign In
               </Link>

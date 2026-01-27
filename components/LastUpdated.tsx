@@ -46,3 +46,5 @@ const LastUpdated: React.FC = () => {
     </span>
   );
 };
+
+export default LastUpdated;
