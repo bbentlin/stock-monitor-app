@@ -27,14 +27,16 @@ const DashboardPage: React.FC = () => {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 flex items-center justify-center">
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-8 max-w-md text-center border border-gray-200 dark:border-gray-700">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Sign In Required</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Please sign in to access your portfolio dashboard.
+        <div className="bg-white dark:bg-gray-800 p-6 sm:p-8 rounded-xl border border-gray-200 dark:border-gray-700 max-w-md w-full text-center">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-4">
+            Sign In Required
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm sm:text-base">
+            Please sign in to view your portfolio dashboard.
           </p>
           <Link
             href="/auth/signin"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-semibold transition-colors"
+            className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors w-full sm:w-auto"
           >
             Sign In
           </Link>
@@ -45,10 +47,10 @@ const DashboardPage: React.FC = () => {
 
   if (error) {
     return (
-      <div>
-        <div>
-          <h2>Error</h2>
-          <p>{error}</p>
+      <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6">
+        <div className="bg-red-100 dark:bg-red-900/30 p-4 sm:p-6 rounded-lg border border-red-300 dark:border-red-700">
+          <h2 className="text-lg font-semibold text-red-800 dark:text-red-200">Error</h2>
+          <p className="text-red-700 dark:text-red-300 text-sm sm:text-base">{error}</p>
         </div>
       </div>
     );
@@ -59,27 +61,35 @@ const DashboardPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6">
       <div className="max-w-7xl mx-auto">
+        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Portfolio Dashboard</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+            Portfolio Dashboard
+          </h1>
           <ExportHoldings holdings={safeHoldings} />
         </div>
 
+        {/* Summary Cards */}
         <SummaryCards holdings={safeHoldings} />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        {/* Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
           <PerformanceChart holdings={safeHoldings} />
           <DiversificationChart holdings={safeHoldings} />
         </div>
 
-        <div className="mt-6">
-          <AddHoldingForm onAdd={addHolding} />
+        {/* Add Holding Form */}
+        <div className="mt-4 sm:mt-6">
+          <AddHoldingForm onAddHolding={addHolding} />
         </div>
 
-        <div className="mt-6">
+        {/* Holdings Table */}
+        <div className="mt-4 sm:mt-6">
           <HoldingsTable holdings={safeHoldings} onRemove={removeHolding} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        {/* Alerts and News */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
           <PriceAlerts holdings={safeHoldings} />
           <PortfolioNews holdings={safeHoldings} />
         </div>

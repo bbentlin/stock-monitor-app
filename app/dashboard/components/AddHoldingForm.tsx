@@ -5,10 +5,10 @@ import { Holding } from "@/types";
 import { useStockSearch } from "@/lib/hooks/useStockSearch";
 
 interface AddHoldingFormProps {
-  onAdd: (holding: Omit<Holding, "id">) => void;
+  onAddHolding: (holding: Omit<Holding, "id">) => Promise<void>;
 }
 
-const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAdd }) => {
+const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAddHolding }) => {
   const [symbol, setSymbol] = useState("");
   const [shares, setShares] = useState("");
   const [purchasePrice, setPurchasePrice] = useState("");
@@ -45,7 +45,7 @@ const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAdd }) => {
     const sharesNum = parseFloat(shares);
     const priceNum = parseFloat(purchasePrice);
 
-    onAdd({
+    onAddHolding({
       symbol: symbol.toUpperCase(),
       name: selectedStock?.name || symbol.toUpperCase(),
       shares: sharesNum,
