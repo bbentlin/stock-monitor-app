@@ -2,20 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-
-export interface Holding {
-  id?: string;
-  symbol: string;
-  name: string;
-  shares: number;
-  purchasePrice: number;
-  currentPrice: number;
-  value: number;
-  gainLoss: number;
-  gainLossPercent: number;
-  lotId: string;
-  purchaseDate?: string;
-}
+import { Holding } from "@/types";
 
 export const useHoldings = () => {
   const { status } = useSession();
