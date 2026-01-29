@@ -5,6 +5,7 @@ import { Holding } from "@/types";
 import { useWebSocket } from "@/lib/context/WebSocketContext";
 import { usePriceFlash } from "@/lib/hooks/usePriceFlash";
 import ConfirmModal from "@/components/ConfirmModal";
+import Link from "next/link";
 
 interface HoldingsTableProps {
   holdings: Holding[];
@@ -250,14 +251,22 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
                       </div>
                     </td>
                     <td className="px-4 py-4 text-right">
-                      <button
-                        onClick={() =>
-                          setDeleteTarget({ lotId: holding.lotId, symbol: holding.symbol })
-                        }
-                        className="text-red-500 hover:text-red-700 dark:hover:text-red-400 text-sm font-medium transition-colors"
-                      >
-                        Remove
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Link
+                          href={`/stocks/${holding.symbol}`}
+                          className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-400 text-sm font-medium transition-colors"
+                        >
+                          Details
+                        </Link>
+                        <button
+                          onClick={() =>
+                            setDeleteTarget({ lotId: holding.lotId, symbol: holding.symbol })
+                          }
+                          className="text-red-500 hover:text-red-700 dark:hover:text-red-400 text-sm font-medium transition-colors"
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
