@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Holding } from "@/types";
 import { useWebSocket } from "@/lib/context/WebSocketContext";
 import { usePriceFlash } from "@/lib/hooks/usePriceFlash";
@@ -12,10 +12,61 @@ interface HoldingsTableProps {
   onRemove: (lotId: string) => void;
 }
 
+type SortField = "symbol" | "shares" | "value" | "gainLoss" | "gainLossPercent";
+type SortDirection = "asc" | "desc";
+
 const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => {
   const { prices: wsPrices, connected, subscribe, unsubscribe } = useWebSocket();
   const flashes = usePriceFlash(wsPrices);
   const [deleteTarget, setDeleteTarget] = useState<{ lotId: string; symbol: string } | null>(null);
+
+  const [sortField, setSortField] = useState<SortField>("symbol");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const sortedHoldings = useMemo(() => {
+    return [...holdings].sort((a, b) => {
+      const aPrice = wsPrices[a.symbol] ?? a.currentPrice;
+      const bPrice = wsPrices[b.symbol] ?? b.currentPrice;
+      const aValue = a.shares * aPrice;
+      const bValue = b.shares * bPrice;
+      const aCost = a.shares * a.purchasePrice;
+      const bCost = b.shares * b.purchasePrice;
+      const aGainLoss = aValue - aCost;
+      const bGainLoss = bValue - bCost;
+      const aPercent = aCost > 0 ? (aGainLoss / aCost) * 100 : 0;
+      const bPercent = bCost > 0 ? (bGainLoss / bCost) * 100 : 0;
+
+      let comparison = 0;
+      switch (sortField) {
+        case "symbol":
+          comparison = a.symbol.localeCompare(b.symbol);
+          break;
+        case "shares": 
+          comparison = a.shares - b.shares;
+          break;
+        case "value": 
+          comparison = aValue - bValue;
+          break;
+        case "gainLoss":
+          comparison = aGainLoss - bGainLoss;
+          break;
+        case "gainLossPercent":
+          comparison = aPercent - bPercent;
+          break;
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+  }, [holdings, wsPrices, sortField, sortDirection]);
 
   useEffect(() => {
     const symbols = holdings.map((h) => h.symbol);
@@ -46,6 +97,28 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
       setDeleteTarget(null);
     }
   };
+
+  const SortHeader: React.FC<{ field: SortField; label: string; align?: "left" | "right"}> = ({
+    field,
+    label,
+    align = "right",
+  }) => (
+    <th
+      className={`px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
+        align === "left" ? "text-left" : "text-right"
+      }`}
+      onClick={() => handleSort(field)}
+    >
+      <div className={`flex items-center gap-1 ${align === "right" ? "justify-end" : ""}`}>
+        {label}
+        {sortField === field && (
+          <span className="text-blue-500">
+            {sortDirection === "asc" ? "↑" : "↓"}
+          </span>
+        )}
+      </div>
+    </th>
+  );
 
   if (holdings.length === 0) {
     return (
@@ -78,7 +151,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
 
         {/* Mobile Card View */}
         <div className="block sm:hidden divide-y divide-gray-200 dark:divide-gray-700">
-          {holdings.map((holding) => {
+          {sortedHoldings.map((holding) => {
             const livePrice = wsPrices[holding.symbol] ?? holding.currentPrice;
             const isLive = wsPrices[holding.symbol] !== undefined;
             const flash = flashes[holding.symbol];
@@ -169,31 +242,23 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Symbol
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Shares
-                </th>
+                <SortHeader field="symbol" label="Symbol" align="left" />
+                <SortHeader field="shares" label="Shares" />
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Avg Cost
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Price
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Value
-                </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Gain/Loss
-                </th>
+                <SortHeader field="value" label="Value" />
+                <SortHeader field="gainLoss" label="Gain/Loss" />
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-              {holdings.map((holding) => {
+              {sortedHoldings.map((holding) => {
                 const livePrice = wsPrices[holding.symbol] ?? holding.currentPrice;
                 const isLive = wsPrices[holding.symbol] !== undefined;
                 const flash = flashes[holding.symbol];
