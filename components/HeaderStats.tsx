@@ -21,7 +21,7 @@ const HeaderStats: React.FC = () => {
         const response = await fetch("/api/holdings");
         if (response.ok) {
           const data = await response.json();
-          setHoldings(data);
+          setHoldings(Array.isArray(data.holdings) ? data.holdings : Array.isArray(data) ? data : []);
         }
       } catch (error) {
         console.error("Failed to fetch holdings for header:", error);

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { auth, signOut } from "@/lib/auth";
 import ThemeToggle from "./ThemeToggle";
 import MobileNav from "./MobileNav";
+import HeaderStats from "./HeaderStats";
+import MarketStatus from "./MarketStatus";
 
 const Header = async () => {
   const session = await auth();
@@ -12,16 +14,23 @@ const Header = async () => {
       <div className="container mx-auto px-4">
         <div className="flex justify-between items-center h-14 sm:h-16">
           {/* Logo */}
-          <Link
-            href="/"
-            className="text-lg sm:text-xl font-bold hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-          >
-            📈 Stock Monitor
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link
+              href="/"
+              className="text-lg sm:text-xl font-bold hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+            >
+              📈 Stock Monitor
+            </Link>
+            {/* Quick Stats - only visible on larger screens */}
+            <HeaderStats />
+          </div>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:block">
             <ul className="flex space-x-6 items-center">
+              <li>
+                <MarketStatus />
+              </li>
               <li>
                 <Link
                   href="/dashboard"
@@ -78,7 +87,7 @@ const Header = async () => {
           {/* Mobile Controls */}
           <div className="flex items-center gap-2 md:hidden">
             <ThemeToggle />
-            <MobileNav 
+            <MobileNav
               userEmail={session?.user?.email}
               isAuthenticated={!!session}
             />

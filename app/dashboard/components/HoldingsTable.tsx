@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { Holding } from "@/types";
 import { useWebSocket } from "@/lib/context/WebSocketContext";
 import { usePriceFlash } from "@/lib/hooks/usePriceFlash";
 import ConfirmModal from "@/components/ConfirmModal";
-import Link from "next/link";
 
 interface HoldingsTableProps {
   holdings: Holding[];

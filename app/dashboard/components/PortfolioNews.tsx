@@ -37,7 +37,7 @@ const PortfolioNews: React.FC<PortfolioNewsProps> = ({ holdings }) => {
           : `/api/stock/news?symbol=${selectedSymbol}`;
       const response = await fetch(url);
       const data = await response.json();
-      setNews(data.news || []);
+      setNews(data.articles || []);
     } catch (err) {
       setError("Failed to fetch news");
     } finally {
