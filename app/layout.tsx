@@ -7,8 +7,15 @@ import WebSocketStatus from "@/components/WebSocketStatus";
 import "@/app/globals.css";
 
 export const metadata: Metadata = {
-  title: "Stock Monitor",
-  description: "Track your stock portfolio",
+  title: "Stock Monitor | Portfolio Tracker",
+  description: "Track your stock portfolio with real-time prices, performance charts, and price alerts.",
+  keywords: ["stocks", "portfolio", "tracker", "investments", "real-time"],
+  authors:[{ name: "Ben Bentlin" }],
+  openGraph: {
+    title: "Stock Monitor",
+    description: "Smart stock portfolio management with real-time tracking",
+    type: "website",
+  },
 };
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
