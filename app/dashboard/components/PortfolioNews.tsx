@@ -38,7 +38,7 @@ const PortfolioNews: React.FC<PortfolioNewsProps> = ({ holdings }) => {
           : `/api/stock/news?symbol=${selectedSymbol}`;
       const response = await fetch(url);
       const data = await response.json();
-      
+
       if (data.error) {
         setError(data.error);
         setNews([]);
@@ -57,6 +57,9 @@ const PortfolioNews: React.FC<PortfolioNewsProps> = ({ holdings }) => {
     return new Date(timestamp * 1000).toLocaleDateString();
   };
 
+  // Get unique symbols from holdings
+  const uniqueSymbols = Array.from(new Set(holdings.map((h) => h.symbol)));
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
       <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
@@ -67,9 +70,9 @@ const PortfolioNews: React.FC<PortfolioNewsProps> = ({ holdings }) => {
           className="bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1 text-gray-900 dark:text-white text-sm"
         >
           <option value="all">All News</option>
-          {holdings.map((h) => (
-            <option key={h.symbol} value={h.symbol}>
-              {h.symbol}
+          {uniqueSymbols.map((symbol) => (
+            <option key={symbol} value={symbol}>
+              {symbol}
             </option>
           ))}
         </select>

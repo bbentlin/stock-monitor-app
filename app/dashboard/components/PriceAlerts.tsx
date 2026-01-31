@@ -105,6 +105,11 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
     }).format(price);
   };
 
+  // Get unique symbols from holdings
+  const uniqueHoldings = holdings.filter(
+    (holding, index, self) => index === self.findIndex((h) => h.symbol === holding.symbol)
+  );
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
       <div className="flex items-center justify-between mb-4">
@@ -147,7 +152,7 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
                 className="w-full rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-white"
               >
                 <option value="">Select Symbol</option>
-                {holdings.map((holding) => (
+                {uniqueHoldings.map((holding) => (
                   <option key={holding.symbol} value={holding.symbol}>
                     {holding.symbol} ({formatPrice(getCurrentPrice(holding.symbol) || holding.currentPrice)})
                   </option>
