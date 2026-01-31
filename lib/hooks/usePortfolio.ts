@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Holding } from "./useHoldings";
+import { Holding } from "@/types";
 
 interface PortfolioDataPoint {
   date: string;

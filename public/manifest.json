@@ -1,6 +1,6 @@
 {
   "name": "Stock Monitor",
-  "short name": "Stocks",
+  "short_name": "Stocks",
   "description": "Track your stock portfolio with real-time prices",
   "start_url": "/",
   "display": "standalone",
