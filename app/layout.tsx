@@ -11,10 +11,26 @@ export const metadata: Metadata = {
   description: "Track your stock portfolio with real-time prices, performance charts, and price alerts.",
   keywords: ["stocks", "portfolio", "tracker", "investments", "real-time"],
   authors:[{ name: "Ben Bentlin" }],
+  manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   openGraph: {
     title: "Stock Monitor",
     description: "Smart stock portfolio management with real-time tracking",
     type: "website",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Stock Monitor",
   },
 };
 
