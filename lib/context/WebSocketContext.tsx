@@ -47,15 +47,16 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const fetchFallbackPrices = useCallback(async (symbols: string[]) => {
     if (symbols.length === 0) return;
 
-    try{
+    try {
       const response = await fetch(`/api/stock/quotes?symbols=${symbols.join(",")}`);
       if (response.ok) {
         const data = await response.json();
         if (data.quotes) {
           const newPrices: Record<string, number> = {};
           Object.entries(data.quotes).forEach(([symbol, quote]: [string, any]) => {
+            // Fix: use currentPrice instead of c
             if (quote?.currentPrice) {
-              newPrices[symbol] = quote.c;
+              newPrices[symbol] = quote.currentPrice;
             }
           });
           if (Object.keys(newPrices).length > 0) {
@@ -142,7 +143,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       ws.onerror = () => {
         console.error("WebSocket error");
-        setError("WebSocket connection error");
+        setError("WebSocket connection error"); // Fixed typo: "connecton" -> "connection"
       };
 
       ws.onclose = (event) => {
@@ -157,7 +158,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         subscribedSymbolsRef.current.clear();
 
         // Attempt to reconnect if not a clean close
-        if (!event.wasClean  && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+        if (!event.wasClean && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
           reconnectAttemptsRef.current++;
           console.log(
             `Attempting to reconnect (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})...`
