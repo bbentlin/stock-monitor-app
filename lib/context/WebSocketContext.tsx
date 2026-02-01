@@ -43,6 +43,32 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY = 5000;
 
+  // Fallback: Fetch prices via REST API for symbols without WebSocket data
+  const fetchFallbackPrices = useCallback(async (symbols: string[]) => {
+    if (symbols.length === 0) return;
+
+    try{
+      const response = await fetch(`/api/stock/quotes?symbols=${symbols.join(",")}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.quotes) {
+          const newPrices: Record<string, number> = {};
+          Object.entries(data.quotes).forEach(([symbol, quote]: [string, any]) => {
+            if (quote?.currentPrice) {
+              newPrices[symbol] = quote.c;
+            }
+          });
+          if (Object.keys(newPrices).length > 0) {
+            console.log("Fallback prices fetched:", newPrices);
+            setPrices((prev) => ({ ...prev, ...newPrices }));
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching fallback prices:", err);
+    }
+  }, []);
+
   const connect = useCallback(() => {
     const apiKey = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
 
@@ -51,30 +77,42 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       return;
     }
 
-    if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
-      return;
-    }
-
     try {
       const ws = new WebSocket(`wss://ws.finnhub.io?token=${apiKey}`);
 
       ws.onopen = () => {
-        console.log("WebSocket connected");
+        console.log("WebSocket Connected!");
         setConnected(true);
         setError(null);
         reconnectAttemptsRef.current = 0;
 
         // Subscribe to pending symbols
+        const symbolsToSubscribe: string[] = [];
         pendingSubscriptionsRef.current.forEach((symbol) => {
           ws.send(JSON.stringify({ type: "subscribe", symbol }));
           subscribedSymbolsRef.current.add(symbol);
+          symbolsToSubscribe.push(symbol);
         });
         pendingSubscriptionsRef.current.clear();
+
+        console.log("Subscribed to symbols:", symbolsToSubscribe);
+
+        // Fetch initial prices via REST as fallback
+        if (symbolsToSubscribe.length > 0) {
+          fetchFallbackPrices(symbolsToSubscribe);
+        }
       };
 
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
+
+          // Debug: log all messages
+          if (message.type === "ping") {
+            console.log("WebSocket ping received");
+          } else if (message.type === "trade") {
+            console.log("Trade data received:", message.data?.length, "trades");
+          }
 
           if (message.type === "trade" && message.data) {
             const newPrices: Record<string, number> = {};
@@ -93,6 +131,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               }
             );
 
+            console.log("Price update:", newPrices);
             setPrices((prev) => ({ ...prev, ...newPrices }));
             setLastTrades((prev) => ({ ...prev, ...newTrades }));
           }
@@ -118,7 +157,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         subscribedSymbolsRef.current.clear();
 
         // Attempt to reconnect if not a clean close
-        if (!event.wasClean && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
+        if (!event.wasClean  && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
           reconnectAttemptsRef.current++;
           console.log(
             `Attempting to reconnect (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})...`
@@ -134,9 +173,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.error("Error creating WebSocket:", err);
       setError("Failed to create WebSocket connection");
     }
-  }, []);
+  }, [fetchFallbackPrices]);
 
   const subscribe = useCallback((symbols: string[]) => {
+    const newSymbols: string[] = [];
+
     symbols.forEach((symbol) => {
       const upperSymbol = symbol.toUpperCase();
 
@@ -147,20 +188,28 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: "subscribe", symbol: upperSymbol }));
         subscribedSymbolsRef.current.add(upperSymbol);
+        newSymbols.push(upperSymbol);
       } else {
         pendingSubscriptionsRef.current.add(upperSymbol);
+        newSymbols.push(upperSymbol);
         // Ensure connection is established
         connect();
       }
     });
-  }, [connect]);
+
+    // Immediately fetch prices via REST for new subscriptions
+    if (newSymbols.length > 0) {
+      console.log("New subscriptions:", newSymbols);
+      fetchFallbackPrices(newSymbols);
+    }
+  }, [connect, fetchFallbackPrices]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     symbols.forEach((symbol) => {
       const upperSymbol = symbol.toUpperCase();
 
       if (
-        wsRef.current?.readyState === WebSocket.OPEN &&
+        wsRef.current?.readyState === WebSocket.OPEN && 
         subscribedSymbolsRef.current.has(upperSymbol)
       ) {
         wsRef.current.send(
