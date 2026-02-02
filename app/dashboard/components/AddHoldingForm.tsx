@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Holding } from "@/types";
 import { useStockSearch } from "@/lib/hooks/useStockSearch";
 
@@ -17,13 +17,32 @@ const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAddHolding }) => {
   );
   const [showSearch, setShowSearch] = useState(false);
   const [selectedStock, setSelectedStock] = useState<{ symbol: string; name: string } | null>(null);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1)
 
   const { results, loading, error, searchStocks } = useStockSearch();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Reset highlighted index when results change
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [results]);
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && dropdownRef.current) {
+      const items = dropdownRef.current.querySelectorAll("button");
+      if (items[highlightedIndex]) {
+        items[highlightedIndex].scrollIntoView({ block: "nearest" });
+      }
+    }
+  }, [highlightedIndex]);
 
   const handleSymbolChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.toUpperCase();
     setSymbol(value);
     setSelectedStock(null);
+    setHighlightedIndex(-1);
     if (value.length >= 2) {
       setShowSearch(true);
       searchStocks(value);
@@ -36,6 +55,46 @@ const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAddHolding }) => {
     setSymbol(stock.symbol);
     setSelectedStock(stock);
     setShowSearch(false);
+    setHighlightedIndex(-1);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSearch || results.length === 0) return;
+
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setHighlightedIndex((prev) => 
+        prev < results.length - 1 ? prev + 1 : prev 
+        );
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setHighlightedIndex((prev) => (prev > 0 ? prev -1 : prev));
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (highlightedIndex >= 0 && results[highlightedIndex]) {
+          handleSelectStock({
+            symbol: results[highlightedIndex].symbol,
+            name: results[highlightedIndex].name,
+          });
+        }
+        break;
+      case "Escape":
+        setShowSearch(false);
+        setHighlightedIndex(-1);
+        break;
+      case "Tab":
+        if (highlightedIndex >= 0 && results[highlightedIndex]) {
+          handleSelectStock({
+            symbol: results[highlightedIndex].symbol,
+            name: results[highlightedIndex].name,
+          });
+        }
+        setShowSearch(false);
+        break;
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {

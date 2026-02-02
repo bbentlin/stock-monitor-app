@@ -12,12 +12,10 @@ export const useHoldings = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(true);
 
   const fetchHoldings = useCallback(async () => {
-    // Wait for session to load
     if (status === "loading") {
       return;
     }
 
-    // If not authenticated, don't fetch
     if (status === "unauthenticated") {
       setIsAuthenticated(false);
       setLoading(false);
@@ -37,11 +35,9 @@ export const useHoldings = () => {
       }
 
       const data = await response.json();
-
-      // Ensure we always set an array
       setHoldings(Array.isArray(data.holdings) ? data.holdings : []);
       setIsAuthenticated(true);
-    } catch(err) {
+    } catch (err) {
       console.error("Error fetching holdings:", err);
       setError("Failed to fetch holdings");
       setHoldings([]);
@@ -84,6 +80,36 @@ export const useHoldings = () => {
     }
   };
 
+  const updateHolding = async (lotId: string, updates: Partial<Holding>) => {
+    if (!isAuthenticated) {
+      setError("Please sign in to update holdings");
+      throw new Error("Not authenticated");
+    }
+
+    try {
+      const response = await fetch(`/api/holdings`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lotId, ...updates }),
+      });
+
+      if (response.status === 401) {
+        setIsAuthenticated(false);
+        throw new Error("Not authenticated");
+      }
+
+      if (response.ok) {
+        await fetchHoldings();
+      } else {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update holding");
+      }
+    } catch (err) {
+      console.error("Error updating holding:", err);
+      throw err;
+    }
+  };
+
   const removeHolding = async (lotId: string) => {
     if (!isAuthenticated) {
       setError("Please sign in to remove holdings");
@@ -115,9 +141,10 @@ export const useHoldings = () => {
   return {
     holdings,
     loading: loading || status === "loading",
-    error, 
+    error,
     isAuthenticated,
     addHolding,
+    updateHolding,
     removeHolding,
     refreshHoldings: fetchHoldings,
   };

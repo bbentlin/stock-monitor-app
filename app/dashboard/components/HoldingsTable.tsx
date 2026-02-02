@@ -10,15 +10,24 @@ import ConfirmModal from "@/components/ConfirmModal";
 interface HoldingsTableProps {
   holdings: Holding[];
   onRemove: (lotId: string) => void;
+  onUpdate?: (lotId: string, updates: Partial<Holding>) => Promise<void>;
 }
 
 type SortField = "symbol" | "shares" | "value" | "gainLoss" | "gainLossPercent";
 type SortDirection = "asc" | "desc";
 
-const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => {
+const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove, onUpdate }) => {
   const { prices: wsPrices, connected, subscribe, unsubscribe } = useWebSocket();
   const flashes = usePriceFlash(wsPrices);
   const [deleteTarget, setDeleteTarget] = useState<{ lotId: string; symbol: string } | null>(null);
+  const [editingHolding, setEditingHolding] = useState<Holding | null>(null);
+  const [editForm, setEditForm] = useState({
+    shares: "",
+    purchasePrice: "",
+    purchaseDate: "",
+  });
+  const [editError, setEditError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [sortField, setSortField] = useState<SortField>("symbol");
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
@@ -50,10 +59,10 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
         case "symbol":
           comparison = a.symbol.localeCompare(b.symbol);
           break;
-        case "shares": 
+        case "shares":
           comparison = a.shares - b.shares;
           break;
-        case "value": 
+        case "value":
           comparison = aValue - bValue;
           break;
         case "gainLoss":
@@ -98,7 +107,57 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
     }
   };
 
-  const SortHeader: React.FC<{ field: SortField; label: string; align?: "left" | "right"}> = ({
+  const handleEditClick = (holding: Holding) => {
+    setEditingHolding(holding);
+    setEditForm({
+      shares: holding.shares.toString(),
+      purchasePrice: holding.purchasePrice.toString(),
+      purchaseDate: holding.purchaseDate || new Date().toISOString().split("T")[0],
+    });
+    setEditError(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingHolding(null);
+    setEditForm({ shares: "", purchasePrice: "", purchaseDate: "" });
+    setEditError(null);
+  };
+
+  const handleEditSave = async () => {
+    if (!editingHolding || !onUpdate) return;
+
+    const shares = parseFloat(editForm.shares);
+    const purchasePrice = parseFloat(editForm.purchasePrice);
+
+    if (isNaN(shares) || shares <= 0) {
+      setEditError("Please enter a valid number of shares");
+      return;
+    }
+
+    if (isNaN(purchasePrice) || purchasePrice <= 0) {
+      setEditError("Please enter a valid purchase price");
+      return;
+    }
+
+    setIsSaving(true);
+    setEditError(null);
+
+    try {
+      await onUpdate(editingHolding.lotId, {
+        shares,
+        purchasePrice,
+        purchaseDate: editForm.purchaseDate,
+      });
+      setEditingHolding(null);
+      setEditForm({ shares: "", purchasePrice: "", purchaseDate: "" });
+    } catch (err) {
+      setEditError(err instanceof Error ? err.message : "Failed to update holding");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const SortHeader: React.FC<{ field: SortField; label: string; align?: "left" | "right" }> = ({
     field,
     label,
     align = "right",
@@ -112,9 +171,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
       <div className={`flex items-center gap-1 ${align === "right" ? "justify-end" : ""}`}>
         {label}
         {sortField === field && (
-          <span className="text-blue-500">
-            {sortDirection === "asc" ? "↑" : "↓"}
-          </span>
+          <span className="text-blue-500">{sortDirection === "asc" ? "↑" : "↓"}</span>
         )}
       </div>
     </th>
@@ -159,79 +216,196 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
             const costBasis = holding.shares * holding.purchasePrice;
             const liveGainLoss = liveValue - costBasis;
             const liveGainLossPercent = costBasis > 0 ? (liveGainLoss / costBasis) * 100 : 0;
+            const isEditing = editingHolding?.lotId === holding.lotId;
 
             return (
-              <div key={holding.id} className="p-4">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <div className="flex items-center gap-2">
+              <div key={holding.lotId} className="p-4">
+                {isEditing ? (
+                  // Edit Form - Mobile
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
                       <span className="font-semibold text-gray-900 dark:text-white text-lg">
                         {holding.symbol}
                       </span>
-                      {isLive && <span className="text-green-500 text-xs">●</span>}
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Editing</span>
                     </div>
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      {holding.name}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => setDeleteTarget({ lotId: holding.lotId, symbol: holding.symbol })}
-                    className="text-red-500 hover:text-red-700 p-2 -mr-2"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 6h18" />
-                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                    </svg>
-                  </button>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-500 dark:text-gray-400">Shares</span>
-                    <p className="font-medium text-gray-900 dark:text-white">{holding.shares}</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          Shares
+                        </label>
+                        <input
+                          type="number"
+                          value={editForm.shares}
+                          onChange={(e) => setEditForm({ ...editForm, shares: e.target.value })}
+                          className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm"
+                          min="0"
+                          step="any"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                          Purchase Price
+                        </label>
+                        <input
+                          type="number"
+                          value={editForm.purchasePrice}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, purchasePrice: e.target.value })
+                          }
+                          className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm"
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
+                        Purchase Date
+                      </label>
+                      <input
+                        type="date"
+                        value={editForm.purchaseDate}
+                        onChange={(e) => setEditForm({ ...editForm, purchaseDate: e.target.value })}
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm"
+                      />
+                    </div>
+
+                    {editError && <p className="text-red-500 text-sm">{editError}</p>}
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={handleEditSave}
+                        disabled={isSaving}
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white py-2 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        {isSaving ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        onClick={handleEditCancel}
+                        disabled={isSaving}
+                        className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded-lg text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-gray-500 dark:text-gray-400">Avg Cost</span>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(holding.purchasePrice)}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 dark:text-gray-400">Price</span>
-                    <p
-                      className={`font-medium transition-colors duration-300 ${
-                        flash === "up"
-                          ? "text-green-500"
-                          : flash === "down"
-                          ? "text-red-500"
-                          : "text-gray-900 dark:text-white"
+                ) : (
+                  // Normal View - Mobile
+                  <>
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-gray-900 dark:text-white text-lg">
+                            {holding.symbol}
+                          </span>
+                          {isLive && <span className="text-green-500 text-xs">●</span>}
+                        </div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {holding.name}
+                        </span>
+                      </div>
+                      <div className="flex gap-1">
+                        {onUpdate && (
+                          <button
+                            onClick={() => handleEditClick(holding)}
+                            className="text-blue-500 hover:text-blue-700 p-2"
+                            title="Edit holding"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="18"
+                              height="18"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                              <path d="m15 5 4 4" />
+                            </svg>
+                          </button>
+                        )}
+                        <button
+                          onClick={() =>
+                            setDeleteTarget({ lotId: holding.lotId, symbol: holding.symbol })
+                          }
+                          className="text-red-500 hover:text-red-700 p-2"
+                          title="Remove holding"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          >
+                            <path d="M3 6h18" />
+                            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                            <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Shares</span>
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {holding.shares.toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Avg Cost</span>
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {formatCurrency(holding.purchasePrice)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Price</span>
+                        <p
+                          className={`font-medium transition-colors duration-300 ${
+                            flash === "up"
+                              ? "text-green-500"
+                              : flash === "down"
+                              ? "text-red-500"
+                              : "text-gray-900 dark:text-white"
+                          }`}
+                        >
+                          {formatCurrency(livePrice)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 dark:text-gray-400">Value</span>
+                        <p className="font-medium text-gray-900 dark:text-white">
+                          {formatCurrency(liveValue)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div
+                      className={`mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 ${
+                        liveGainLoss >= 0 ? "text-green-500" : "text-red-500"
                       }`}
                     >
-                      {formatCurrency(livePrice)}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-gray-500 dark:text-gray-400">Value</span>
-                    <p className="font-medium text-gray-900 dark:text-white">
-                      {formatCurrency(liveValue)}
-                    </p>
-                  </div>
-                </div>
-
-                <div
-                  className={`mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 ${
-                    liveGainLoss >= 0 ? "text-green-500" : "text-red-500"
-                  }`}
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Gain/Loss</span>
-                    <div className="text-right">
-                      <span className="font-semibold">{formatCurrency(liveGainLoss)}</span>
-                      <span className="ml-2 text-sm">({formatPercent(liveGainLossPercent)})</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm">Gain/Loss</span>
+                        <div className="text-right">
+                          <span className="font-medium">{formatCurrency(liveGainLoss)}</span>
+                          <span className="text-sm ml-2">{formatPercent(liveGainLossPercent)}</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  </>
+                )}
               </div>
             );
           })}
@@ -266,10 +440,76 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
                 const costBasis = holding.shares * holding.purchasePrice;
                 const liveGainLoss = liveValue - costBasis;
                 const liveGainLossPercent = costBasis > 0 ? (liveGainLoss / costBasis) * 100 : 0;
+                const isEditing = editingHolding?.lotId === holding.lotId;
+
+                if (isEditing) {
+                  return (
+                    <tr key={holding.lotId} className="bg-blue-50 dark:bg-blue-900/20">
+                      <td className="px-4 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {holding.symbol}
+                          </span>
+                        </div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          {holding.name}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4">
+                        <input
+                          type="number"
+                          value={editForm.shares}
+                          onChange={(e) => setEditForm({ ...editForm, shares: e.target.value })}
+                          className="w-24 px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white text-sm text-right"
+                          min="0"
+                          step="any"
+                        />
+                      </td>
+                      <td className="px-4 py-4">
+                        <input
+                          type="number"
+                          value={editForm.purchasePrice}
+                          onChange={(e) =>
+                            setEditForm({ ...editForm, purchasePrice: e.target.value })
+                          }
+                          className="w-24 px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white text-sm text-right"
+                          min="0"
+                          step="0.01"
+                        />
+                      </td>
+                      <td className="px-4 py-4 text-right text-gray-500 dark:text-gray-400">
+                        {formatCurrency(livePrice)}
+                      </td>
+                      <td className="px-4 py-4 text-right text-gray-500 dark:text-gray-400">—</td>
+                      <td className="px-4 py-4 text-right text-gray-500 dark:text-gray-400">—</td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={handleEditSave}
+                            disabled={isSaving}
+                            className="text-green-600 hover:text-green-700 dark:text-green-400 dark:hover:text-green-300 text-sm font-medium disabled:opacity-50"
+                          >
+                            {isSaving ? "..." : "Save"}
+                          </button>
+                          <button
+                            onClick={handleEditCancel}
+                            disabled={isSaving}
+                            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 text-sm font-medium"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                        {editError && (
+                          <p className="text-red-500 text-xs mt-1 text-right">{editError}</p>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                }
 
                 return (
                   <tr
-                    key={holding.id}
+                    key={holding.lotId}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
                   >
                     <td className="px-4 py-4">
@@ -317,6 +557,14 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove }) => 
                     </td>
                     <td className="px-4 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
+                        {onUpdate && (
+                          <button
+                            onClick={() => handleEditClick(holding)}
+                            className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-400 text-sm font-medium transition-colors"
+                          >
+                            Edit
+                          </button>
+                        )}
                         <Link
                           href={`/stocks/${holding.symbol}`}
                           className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-400 text-sm font-medium transition-colors"

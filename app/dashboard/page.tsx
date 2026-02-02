@@ -14,7 +14,7 @@ import ExportHoldings from "./components/ExportHoldings";
 import Link from "next/link";
 
 const DashboardPage: React.FC = () => {
-  const { holdings, loading, error, isAuthenticated, addHolding, removeHolding } = useHoldings();
+  const { holdings, loading, error, isAuthenticated, addHolding, updateHolding, removeHolding } = useHoldings();
 
   if (loading) {
     return (
@@ -85,7 +85,11 @@ const DashboardPage: React.FC = () => {
 
         {/* Holdings Table */}
         <div className="mt-4 sm:mt-6">
-          <HoldingsTable holdings={safeHoldings} onRemove={removeHolding} />
+          <HoldingsTable
+            holdings={safeHoldings}
+            onRemove={removeHolding}
+            onUpdate={updateHolding}
+          />
         </div>
 
         {/* Alerts and News */}

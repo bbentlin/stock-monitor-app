@@ -142,8 +142,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       };
 
       ws.onerror = () => {
-        console.error("WebSocket error");
-        setError("WebSocket connection error"); // Fixed typo: "connecton" -> "connection"
+        console.warn("WebSocket connection failed - using REST API fallback");
+        // Don't show error to user if we have fallback prices
+        if (Object.keys(prices).length === 0) {
+          setError("Live prices unavailable - showing delayed quotes");
+        }
       };
 
       ws.onclose = (event) => {
@@ -157,6 +160,12 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         });
         subscribedSymbolsRef.current.clear();
 
+        // Fetch fallback prices when WebSocket closes
+        const symbolsToFetch = Array.from(pendingSubscriptionsRef.current);
+        if (symbolsToFetch.length > 0) {
+          fetchFallbackPrices(symbolsToFetch);
+        }
+
         // Attempt to reconnect if not a clean close
         if (!event.wasClean && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
           reconnectAttemptsRef.current++;
@@ -165,7 +174,10 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           );
           reconnectTimeoutRef.current = setTimeout(connect, RECONNECT_DELAY);
         } else if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
-          setError("Failed to reconnect after multiple attempts");
+          // Don't show error if fallback is working
+          if (Object.keys(prices).length === 0) {
+            setError("Live updates unavailable");
+          }
         }
       };
 
