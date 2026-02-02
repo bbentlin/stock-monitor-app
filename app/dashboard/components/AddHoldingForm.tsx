@@ -123,6 +123,7 @@ const AddHoldingForm: React.FC<AddHoldingFormProps> = ({ onAddHolding }) => {
     setPurchasePrice("");
     setPurchaseDate(new Date().toISOString().split("T")[0]);
     setSelectedStock(null);
+    setHighlightedIndex(-1);
   };
 
   return (
