@@ -87,7 +87,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       try {
         const response = await fetch(`/api/stock/quotes?symbols=${queuedSymbols.join(",")}`);
         if (response.ok) {
-          const data = await resonse.json();
+          const data = await response.json();
           if (data.quotes) {
             const newPrices: Record<string, number> = {};
             const fetchTime = Date.now();

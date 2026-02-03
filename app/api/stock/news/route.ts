@@ -53,7 +53,7 @@ export async function GET(request: Request) {
     }));
 
     // Cache the result
-    newsCache.set(cacheKey, { data: articles timestamp: Date.now() });
+    newsCache.set(cacheKey, { data: articles, timestamp: Date.now() });
 
     return NextResponse.json({ articles });
   } catch (error) {
