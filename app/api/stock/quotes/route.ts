@@ -1,54 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: Request) {
-  try {
-    const { symbols } = await request.json();
+// In-memory cache
+const quoteCache = new Map<string, { data: any; timestamp: number}>();
+const CACHE_TTL = 60 * 1000; // 1 minute
 
-    if (!symbols || !Array.isArray(symbols)) {
-      return NextResponse.json({ error: "Symbols array required" }, { status: 400 });
-    }
-
-    const apiKey = process.env.FINNHUB_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: "API key not configured" }, { status: 500 });
-    }
-
-    const quotes: Record<string, any> = {};
-
-    // Fetch in parallel with rate limiting
-    const batchSize = 5;
-    for (let i = 0; i < symbols.length; i += batchSize) {
-      const batch = symbols.slice(i, i + batchSize);
-      const promises = batch.map(async (symbol: string) => {
-        const url = `https://finnhub.io/api/v1/quote?symbol=${symbol.toUpperCase()}&token=${apiKey}`;
-        const response = await fetch(url);
-        const data = await response.json();
-
-        if (data.c && data.c !== 0) {
-          quotes[symbol.toUpperCase()] = {
-            currentPrice: data.c,
-            change: data.d,
-            changePercent: data.dp,
-          };
-        }
-      });
-
-      await Promise.all(promises);
-
-      // Rate limit delay between batches
-      if (i + batchSize < symbols.length) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-    }
-
-    return NextResponse.json({ quotes });
-  } catch (error) {
-    console.error("Error fetching quotes:", error);
-    return NextResponse.json({ error: "Failed to fetch quotes" }, { status: 500 });
-  }
-}
-
-// Add GET handler for WebSocket fallback
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const symbolsParam = searchParams.get("symbols");
@@ -57,39 +12,76 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Missing symbols parameter" }, { status: 400 });
   }
 
-  const symbols = symbolsParam.split(",").map((s) => s.trim());
-  
-  // Reuse the same logic as POST
   const apiKey = process.env.FINNHUB_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "API key not configured" }, { status: 500 });
   }
 
+  const symbols = symbolsParam.split(",").map((s) => s.trim().toUpperCase());
   const quotes: Record<string, any> = {};
-  const batchSize = 5;
+  const symbolsToFetch: string[] = [];
+  const now = Date.now();
 
-  for (let i = 0; i < symbols.length; i += batchSize) {
-    const batch = symbols.slice(i, i + batchSize);
-    const promises = batch.map(async (symbol: string) => {
-      const url = `https://finnhub.io/api/v1/quote?symbol=${symbol.toUpperCase()}&token=${apiKey}`;
-      const response = await fetch(url);
-      const data = await response.json();
+  // Check cache first
+  symbols.forEach((symbol) => {
+    const cached = quoteCache.get(symbol);
+    if (cached && now - cached.timestamp < CACHE_TTL) {
+      quotes[symbol] = cached.data;
+    } else {
+      symbolsToFetch.push(symbol);
+    }
+  });
 
-      if (data.c && data.c !== 0) {
-        quotes[symbol.toUpperCase()] = {
-          currentPrice: data.c,
-          change: data.d,
-          changePercent: data.dp,
-        };
+  // Only fetch uncached symbols
+  if (symbolsToFetch.length > 0) {
+    const batchSize = 5;
+
+    for (let i = 0; i < symbolsToFetch.length; i += batchSize) {
+      const batch = symbolsToFetch.slice(i, i + batchSize);
+      const promises = batch.map(async (symbol: string) => {
+        try {
+          const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${apiKey}`;
+          const response = await fetch(url);
+          const data = await response.json();
+
+          if (data.c && data.c !== 0) {
+            const quoteData = {
+              currentPrice: data.c,
+              change: data.d,
+              changePercent: data.dp,
+            };
+            quotes[symbol] = quoteData;
+            quoteCache.set(symbol, { data: quoteData, timestamp: now });
+          }
+        } catch (err) {
+          console.error(`Error fetching quote for ${symbol}:`, err);
+        }
+      });
+
+      await Promise.all(promises);
+
+      if (i + batchSize < symbolsToFetch.length) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
-    });
-
-    await Promise.all(promises);
-
-    if (i + batchSize < symbols.length) {
-      await new Promise(resolve => setTimeout(resolve, 200));
     }
   }
 
+  console.log(`Quotes: ${symbols.length} requested, ${symbolsToFetch.length} fetched, ${symbols.length - symbolsToFetch.length} cached`);
+
   return NextResponse.json({ quotes });
+}
+
+export async function POST(request: Request) {
+  const { symbols } = await request.json();
+
+  if (!symbols || !Array.isArray(symbols)) {
+    return NextResponse.json({ error: "Symbols array required" }, { status: 400 });
+  }
+
+  // Redirect to GET handler logic
+  const url = new URL(request.url);
+  url.searchParams.set("symbols", symbols.join(","));
+
+  const getRequest = new Request(url.toString(), { method: "GET" });
+  return GET(getRequest as NextRequest);
 }
