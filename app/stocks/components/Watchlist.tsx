@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { WatchlistStock } from "@/lib/hooks/useWatchlist";
 import { useWebSocket } from "@/lib/context/WebSocketContext";
@@ -10,20 +10,10 @@ interface WatchlistProps {
   onRemove: (symbol: string) => void;
 }
 
-interface StockQuoteData {
-  currentPrice: number;
-  change: number;
-  changePercent: number;
-}
-
-const Watchlist: React.FC<WatchlistProps> = ({ stocks, onRemove }) => {
-  const [quoteData, setQuoteData] = useState<Record<string, StockQuoteData>>({});
-  const [loadingPrices, setLoadingPrices] = useState(false);
-
-  // WebSocket for real-time price updates
+const Watchlist: React.FC<WatchlistProps> =  ({ stocks, onRemove }) => {
   const { prices: wsPrices, connected, subscribe, unsubscribe } = useWebSocket();
 
-  // Subscribe to WebSocket for real-time prices
+  // Subscribe to WebSocket - prices come from context (which handles caching)
   useEffect(() => {
     const symbols = stocks.map((s) => s.symbol);
     if (symbols.length > 0) {
@@ -36,65 +26,24 @@ const Watchlist: React.FC<WatchlistProps> = ({ stocks, onRemove }) => {
     };
   }, [stocks, subscribe, unsubscribe]);
 
-  // Fetch daily change data from API (less frequently)
-  useEffect(() => {
-    const fetchQuotes = async () => {
-      if (stocks.length === 0) return;
-
-      setLoadingPrices(true);
-      const newQuotes: Record<string, StockQuoteData> = {};
-
-      for (const stock of stocks) {
-        try {
-          const response = await fetch(`/api/stock/quote?symbol=${stock.symbol}`);
-          if (response.ok) {
-            const data = await response.json();
-            newQuotes[stock.symbol] = {
-              currentPrice: data.currentPrice,
-              change: data.change,
-              changePercent: data.changePercent,
-            };
-          }
-        } catch (err) {
-          console.error(`Error fetching quote for ${stock.symbol}`, err);
-        }
-        await new Promise((r) => setTimeout(r, 100));
-      }
-
-      setQuoteData(newQuotes);
-      setLoadingPrices(false);
-    };
-
-    fetchQuotes();
-
-    // Refresh quotes less often when WebSocket is connected
-    const interval = setInterval(fetchQuotes, connected ? 300000 : 60000);
-    return () => clearInterval(interval);
-  }, [stocks, connected]);
-
-  // Get the best available price (WebSocket > API)
+  // Use prices from context - no separate API calls
   const getCurrentPrice = (symbol: string): number | undefined => {
-    return wsPrices[symbol] ?? quoteData[symbol]?.currentPrice;
+    return wsPrices[symbol];
   };
 
-  return (
+return (
     <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-2">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Watchlist</h2>
           <div
             className={`w-2 h-2 rounded-full ${connected ? "bg-green-500" : "bg-yellow-500"}`}
-            title={connected ? "Live prices" : "Connecting..."}
+            title={connected ? "Live prices" : "Using cached prices"}
           />
         </div>
-        <div className="flex items-center gap-2">
-          {loadingPrices && (
-            <span className="text-gray-500 dark:text-gray-400 text-sm">Updating...</span>
-          )}
-          <span className="text-sm text-gray-500 dark:text-gray-400">
-            {stocks.length} {stocks.length === 1 ? "stock" : "stocks"}
-          </span>
-        </div>
+        <span className="text-sm text-gray-500 dark:text-gray-400">
+          {stocks.length} {stocks.length === 1 ? "stock" : "stocks"}
+        </span>
       </div>
 
       {stocks.length === 0 ? (
@@ -104,9 +53,8 @@ const Watchlist: React.FC<WatchlistProps> = ({ stocks, onRemove }) => {
       ) : (
         <div className="space-y-2 max-h-[500px] overflow-y-auto">
           {stocks.map((stock) => {
-            const quote = quoteData[stock.symbol];
             const livePrice = getCurrentPrice(stock.symbol);
-            const isLive = wsPrices[stock.symbol] !== undefined;
+            const hasPrice = livePrice !== undefined;
 
             return (
               <div
@@ -123,28 +71,11 @@ const Watchlist: React.FC<WatchlistProps> = ({ stocks, onRemove }) => {
                         {stock.name}
                       </p>
                     </div>
-                    {livePrice !== undefined && (
+                    {hasPrice && (
                       <div className="text-right mr-4">
-                        <div className="flex items-center gap-1">
-                          <p className="text-gray-900 dark:text-white font-semibold">
-                            ${livePrice.toFixed(2)}
-                          </p>
-                          {isLive && (
-                            <span className="text-green-500 text-xs" title="Live price">
-                              ●
-                            </span>
-                          )}
-                        </div>
-                        {quote && (
-                          <p
-                            className={`text-sm ${
-                              quote.change >= 0 ? "text-green-500" : "text-red-500"
-                            }`}
-                          >
-                            {quote.change >= 0 ? "+" : ""}
-                            {quote.change?.toFixed(2)} ({quote.changePercent?.toFixed(2)}%)
-                          </p>
-                        )}
+                        <p className="text-gray-900 dark:text-white font-semibold">
+                          ${livePrice.toFixed(2)}
+                        </p>
                       </div>
                     )}
                   </div>
