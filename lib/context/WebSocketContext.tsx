@@ -40,41 +40,86 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const subscribedSymbolsRef = useRef<Set<string>>(new Set());
   const pendingSubscriptionsRef = useRef<Set<string>>(new Set());
 
+  // Cache to prevent duplicate API calls
+  const lastFetchTimeRef = useRef<Record<string, number>>({});
+  const pendingFetchRef = useRef<Promise<void | null>>(null);
+  const fetchQueueRef = useRef<Set<string>>(new Set());
+  const fetchDebounceRef = useRef<NodeJS.Timeout>(null);
+
   const MAX_RECONNECT_ATTEMPTS = 5;
   const RECONNECT_DELAY = 5000;
+  const CACHE_TTL = 60000; // 1 minute cache for REST API prices
+  const FETCH_DEBOUNCE = 500 // Wait 500ms to batch requests
 
-  // Fallback: Fetch prices via REST API for symbols without WebSocket data
+  // Debounced fetch - collects symbols and fetches once
   const fetchFallbackPrices = useCallback(async (symbols: string[]) => {
     if (symbols.length === 0) return;
 
-    try {
-      const response = await fetch(`/api/stock/quotes?symbols=${symbols.join(",")}`);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.quotes) {
-          const newPrices: Record<string, number> = {};
-          Object.entries(data.quotes).forEach(([symbol, quote]: [string, any]) => {
-            // Fix: use currentPrice instead of c
-            if (quote?.currentPrice) {
-              newPrices[symbol] = quote.currentPrice;
+    const now = Date.now();
+
+    // Filter out symbols that were fetched recently
+    const symbolsToFetch = symbols.filter((symbol) => {
+      const lastFetch = lastFetchTimeRef.current[symbol];
+      return !lastFetch || now - lastFetch > CACHE_TTL;
+    });
+
+    if (symbolsToFetch.length === 0) {
+      console.log("All symbols cached, skipping fetch");
+      return;
+    }
+
+    // Add to queue
+    symbolsToFetch.forEach((s) => fetchQueueRef.current.add(s));
+
+    // Debounce the actual fetch
+    if (fetchDebounceRef.current) {
+      clearTimeout(fetchDebounceRef.current);
+    }
+
+    fetchDebounceRef.current = setTimeout(async () => {
+      const queuedSymbols = Array.from(fetchQueueRef.current);
+      fetchQueueRef.current.clear();
+
+      if (queuedSymbols.length === 0) return;
+
+      console.log("Fetching prices for:", queuedSymbols.join(","));
+
+      try {
+        const response = await fetch(`/api/stock/quotes?symbols=${queuedSymbols.join(",")}`);
+        if (response.ok) {
+          const data = await resonse.json();
+          if (data.quotes) {
+            const newPrices: Record<string, number> = {};
+            const fetchTime = Date.now();
+
+            Object.entries(data.quotes).forEach(([symbol, quote]: [string, any]) => {
+              if (quote?.currentPrice) {
+                newPrices[symbol] = quote.currentPrice;
+                lastFetchTimeRef.current[symbol] = fetchTime;
+              }
+            });
+
+            if (Object.keys(newPrices).length > 0) {
+              console.log("Fallback prices fetched:", Object.keys(newPrices).length, "symbols");
+              setPrices((prev) => ({ ...prev, ...newPrices }));
             }
-          });
-          if (Object.keys(newPrices).length > 0) {
-            console.log("Fallback prices fetched:", newPrices);
-            setPrices((prev) => ({ ...prev, ...newPrices }));
           }
         }
+      } catch (err) {
+        console.error("Error fetching fallback prices:", err);
       }
-    } catch (err) {
-      console.error("Error fetching fallback prices:", err);
-    }
+    }, FETCH_DEBOUNCE);
   }, []);
 
   const connect = useCallback(() => {
     const apiKey = process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
 
     if (!apiKey) {
-      setError("WebSocket API key not configured. Add NEXT_PUBLIC_FINNHUB_API_KEY to your .env.local");
+      setError("WebSocket API key not configured");
+      return;
+    }
+
+    if (wsRef.current?.readyState === WebSocket.OPEN || wsRef.current?.readyState === WebSocket.CONNECTING) {
       return;
     }
 
@@ -96,9 +141,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         });
         pendingSubscriptionsRef.current.clear();
 
-        console.log("Subscribed to symbols:", symbolsToSubscribe);
-
-        // Fetch initial prices via REST as fallback
+        // Fetch initial prices via REST as fallback (once, debounced)
         if (symbolsToSubscribe.length > 0) {
           fetchFallbackPrices(symbolsToSubscribe);
         }
@@ -107,13 +150,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-
-          // Debug: log all messages
-          if (message.type === "ping") {
-            console.log("WebSocket ping received");
-          } else if (message.type === "trade") {
-            console.log("Trade data received:", message.data?.length, "trades");
-          }
 
           if (message.type === "trade" && message.data) {
             const newPrices: Record<string, number> = {};
@@ -129,10 +165,11 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
                   timestamp: trade.t,
                   volume: trade.v,
                 };
+                // Update cache time since we got fresh data
+                lastFetchTimeRef.current[symbol] = Date.now();
               }
             );
 
-            console.log("Price update:", newPrices);
             setPrices((prev) => ({ ...prev, ...newPrices }));
             setLastTrades((prev) => ({ ...prev, ...newTrades }));
           }
@@ -143,10 +180,6 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       ws.onerror = () => {
         console.warn("WebSocket connection failed - using REST API fallback");
-        // Don't show error to user if we have fallback prices
-        if (Object.keys(prices).length === 0) {
-          setError("Live prices unavailable - showing delayed quotes");
-        }
       };
 
       ws.onclose = (event) => {
@@ -160,24 +193,17 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         });
         subscribedSymbolsRef.current.clear();
 
-        // Fetch fallback prices when WebSocket closes
-        const symbolsToFetch = Array.from(pendingSubscriptionsRef.current);
+        // Only fetch fallback if we don't have prices
+        const symbolsToFetch = Array.from (pendingSubscriptionsRef.current).filter(
+          (s) => !prices[s]
+        );
         if (symbolsToFetch.length > 0) {
           fetchFallbackPrices(symbolsToFetch);
         }
 
-        // Attempt to reconnect if not a clean close
         if (!event.wasClean && reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
           reconnectAttemptsRef.current++;
-          console.log(
-            `Attempting to reconnect (${reconnectAttemptsRef.current}/${MAX_RECONNECT_ATTEMPTS})...`
-          );
           reconnectTimeoutRef.current = setTimeout(connect, RECONNECT_DELAY);
-        } else if (reconnectAttemptsRef.current >= MAX_RECONNECT_ATTEMPTS) {
-          // Don't show error if fallback is working
-          if (Object.keys(prices).length === 0) {
-            setError("Live updates unavailable");
-          }
         }
       };
 
@@ -186,7 +212,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       console.error("Error creating WebSocket:", err);
       setError("Failed to create WebSocket connection");
     }
-  }, [fetchFallbackPrices]);
+  }, [fetchFallbackPrices, prices]);
 
   const subscribe = useCallback((symbols: string[]) => {
     const newSymbols: string[] = [];
@@ -194,28 +220,28 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     symbols.forEach((symbol) => {
       const upperSymbol = symbol.toUpperCase();
 
-      if (subscribedSymbolsRef.current.has(upperSymbol)) {
-        return; // Already subscribed
+      // Skip if already subscribed or pending
+      if (subscribedSymbolsRef.current.has(upperSymbol) || pendingSubscriptionsRef.current.has(upperSymbol)) {
+        return;
       }
 
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: "subscribe", symbol: upperSymbol }));
         subscribedSymbolsRef.current.add(upperSymbol);
-        newSymbols.push(upperSymbol);
       } else {
         pendingSubscriptionsRef.current.add(upperSymbol);
-        newSymbols.push(upperSymbol);
-        // Ensure connection is established
         connect();
       }
+
+      newSymbols.push(upperSymbol);
     });
 
-    // Immediately fetch prices via REST for new subscriptions
-    if (newSymbols.length > 0) {
-      console.log("New subscriptions:", newSymbols);
-      fetchFallbackPrices(newSymbols);
+    // Only fetch for symbols we don't have cached prices for
+    const symbolsNeedingFetch = newSymbols.filter((s) => !prices[s]);
+    if (symbolsNeedingFetch.length > 0) {
+      fetchFallbackPrices(symbolsNeedingFetch);
     }
-  }, [connect, fetchFallbackPrices]);
+  }, [connect, fetchFallbackPrices, prices]);
 
   const unsubscribe = useCallback((symbols: string[]) => {
     symbols.forEach((symbol) => {
@@ -225,9 +251,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         wsRef.current?.readyState === WebSocket.OPEN && 
         subscribedSymbolsRef.current.has(upperSymbol)
       ) {
-        wsRef.current.send(
-          JSON.stringify({ type: "unsubscribe", symbol: upperSymbol })
-        );
+        wsRef.current.send(JSON.stringify({ type: "unsubscribe", symbol: upperSymbol }));
         subscribedSymbolsRef.current.delete(upperSymbol);
       }
 
@@ -238,12 +262,9 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-      }
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
+      if (reconnectTimeoutRef) clearTimeout(reconnectTimeoutRef.current);
+      if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
+      if (wsRef.current) wsRef.current.close();
     };
   }, []);
 
