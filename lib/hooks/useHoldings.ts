@@ -1,60 +1,40 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import useSWR from "swr";
 import { Holding } from "@/types";
+import { useSession } from "next-auth/react";
+import { refresh } from "next/cache";
+
+const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
 export const useHoldings = () => {
-  const { status } = useSession();
-  const [holdings, setHoldings] = useState<Holding[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const { data: session, status } = useSession();
+  const isAuthenticated = status === "authenticated";
 
-  const fetchHoldings = useCallback(async () => {
-    if (status === "loading") {
-      return;
+  const { data, error, isLoading, mutate } = useSWR<{ holdings: Holding[] }>(
+    isAuthenticated ? "/api/holdings" : null,
+    fetcher,
+    {
+      refreshInterval: 30000,
+      revalidateOnFocus: true,
+      dedupingInterval: 5000,
     }
+  );
 
-    if (status === "unauthenticated") {
-      setIsAuthenticated(false);
-      setLoading(false);
-      setHoldings([]);
-      return;
-    }
+  const holdings = data?.holdings ?? [];
 
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await fetch("/api/holdings");
+  // Optimistic add
+  const addHolding = async (holding: Omit<Holding, "lotId">) => {
+    const optimisticHolding = {
+      ...holding,
+      lotId: `temp-${Date.now()}`,
+      value: holding.shares * (holding.currentPrice ?? holding.purchasePrice),
+    };
 
-      if (response.status === 401) {
-        setIsAuthenticated(false);
-        setHoldings([]);
-        return;
-      }
-
-      const data = await response.json();
-      setHoldings(Array.isArray(data.holdings) ? data.holdings : []);
-      setIsAuthenticated(true);
-    } catch (err) {
-      console.error("Error fetching holdings:", err);
-      setError("Failed to fetch holdings");
-      setHoldings([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [status]);
-
-  useEffect(() => {
-    fetchHoldings();
-  }, [fetchHoldings]);
-
-  const addHolding = async (holding: Omit<Holding, "id">) => {
-    if (!isAuthenticated) {
-      setError("Please sign in to add holdings");
-      return;
-    }
+    mutate(
+      { holdings: [...holdings, optimisticHolding] },
+      false
+    );
 
     try {
       const response = await fetch("/api/holdings", {
@@ -63,89 +43,70 @@ export const useHoldings = () => {
         body: JSON.stringify(holding),
       });
 
-      if (response.status === 401) {
-        setIsAuthenticated(false);
-        return;
-      }
-
-      if (response.ok) {
-        await fetchHoldings();
-      } else {
-        const data = await response.json();
-        setError(data.error || "Failed to add holding");
-      }
-    } catch (err) {
-      console.error("Error adding holding:", err);
-      setError("Failed to add holding");
+      if (!response.ok) throw new Error("Failed to add holding");
+      mutate();
+    } catch (error) {
+      mutate(); // Rollback
+      throw Error;
     }
   };
 
-  const updateHolding = async (lotId: string, updates: Partial<Holding>) => {
-    if (!isAuthenticated) {
-      setError("Please sign in to update holdings");
-      throw new Error("Not authenticated");
-    }
+  // Optimistic remove
+  const removeHolding = async (lotId: string) => {
+    mutate(
+      { holdings: holdings.filter((h) => h.lotId !== lotId) },
+      false
+    );
 
     try {
-      const response = await fetch(`/api/holdings`, {
+      const response = await fetch("/api/holdings", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lotId }),
+      });
+
+      if (!response.ok) throw new Error("Failed to remove holding");
+      mutate();
+    } catch (error) {
+      mutate();
+      throw error;
+    }
+  };
+
+  // Optimistic update
+  const updateHolding = async (lotId: string, updates: Partial<Holding>) => {
+    mutate(
+      {
+        holdings: holdings.map((h) => 
+          h.lotId === lotId ? { ...h, ...updates }: h
+        ),
+      },
+      false
+    );
+
+    try {
+      const response = await fetch("/api/holdings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ lotId, ...updates }),
       });
 
-      if (response.status === 401) {
-        setIsAuthenticated(false);
-        throw new Error("Not authenticated");
-      }
-
-      if (response.ok) {
-        await fetchHoldings();
-      } else {
-        const data = await response.json();
-        throw new Error(data.error || "Failed to update holding");
-      }
-    } catch (err) {
-      console.error("Error updating holding:", err);
-      throw err;
-    }
-  };
-
-  const removeHolding = async (lotId: string) => {
-    if (!isAuthenticated) {
-      setError("Please sign in to remove holdings");
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/holdings?lotId=${lotId}`, {
-        method: "DELETE",
-      });
-
-      if (response.status === 401) {
-        setIsAuthenticated(false);
-        return;
-      }
-
-      if (response.ok) {
-        await fetchHoldings();
-      } else {
-        const data = await response.json();
-        setError(data.error || "Failed to remove holding");
-      }
-    } catch (err) {
-      console.error("Error removing holding:", err);
-      setError("Failed to remove holding");
+      if (!response.ok) throw new Error("Failed to update holding");
+      mutate();
+    } catch (error) {
+      mutate();
+      throw error;
     }
   };
 
   return {
     holdings,
-    loading: loading || status === "loading",
+    loading: isLoading,
     error,
     isAuthenticated,
     addHolding,
-    updateHolding,
     removeHolding,
-    refreshHoldings: fetchHoldings,
+    updateHolding,
+    refresh: mutate,
   };
 };
