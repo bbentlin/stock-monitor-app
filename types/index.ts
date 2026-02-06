@@ -5,6 +5,7 @@ export interface Holding {
   shares: number;
   purchasePrice: number;
   currentPrice: number;
+  change?: number;
   value: number;
   gainLoss: number;
   gainLossPercent: number;
