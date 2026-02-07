@@ -3,6 +3,7 @@
 import React from "react";
 import { useHoldings } from "@/lib/hooks/useHoldings";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import SectionErrorBoundary from "@/components/SectionErrorBoundary";
 import SummaryCards from "./components/SummaryCards";
 import HoldingsTable from "./components/HoldingsTable";
 import AddHoldingForm from "./components/AddHoldingForm";
@@ -19,7 +20,7 @@ const DashboardPage: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 flex items-center justify-center">
-        <LoadingSpinner size="lg" text="Loading your portfolio..." />
+        <LoadingSpinner />
       </div>
     );
   }
@@ -70,32 +71,42 @@ const DashboardPage: React.FC = () => {
         </div>
 
         {/* Summary Cards */}
-        <SummaryCards holdings={safeHoldings} />
+        <SectionErrorBoundary sectionName="Summary">
+          <SummaryCards holdings={safeHoldings} />
+        </SectionErrorBoundary>
 
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
-          <PerformanceChart holdings={safeHoldings} />
-          <DiversificationChart holdings={safeHoldings} />
+          <SectionErrorBoundary sectionName="Performance/Diversification Charts">
+            <PerformanceChart holdings={safeHoldings} />
+            <DiversificationChart holdings={safeHoldings} />
+          </SectionErrorBoundary>
         </div>
 
         {/* Add Holding Form */}
         <div className="mt-4 sm:mt-6">
-          <AddHoldingForm onAddHolding={addHolding} />
+          <SectionErrorBoundary sectionName="Add Holding">
+            <AddHoldingForm onAddHolding={addHolding} />
+          </SectionErrorBoundary>
         </div>
 
         {/* Holdings Table */}
         <div className="mt-4 sm:mt-6">
-          <HoldingsTable
+          <SectionErrorBoundary sectionName="Holdings">
+            <HoldingsTable
             holdings={safeHoldings}
             onRemove={removeHolding}
             onUpdate={updateHolding}
-          />
+            />
+          </SectionErrorBoundary>
         </div>
 
         {/* Alerts and News */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
-          <PriceAlerts holdings={safeHoldings} />
-          <PortfolioNews holdings={safeHoldings} />
+          <SectionErrorBoundary sectionName="Price Alerts & News">
+            <PriceAlerts holdings={safeHoldings} />
+            <PortfolioNews holdings={safeHoldings} />
+          </SectionErrorBoundary>
         </div>
       </div>
     </div>
