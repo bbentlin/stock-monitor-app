@@ -69,7 +69,7 @@ export default function HoldingsTableWithSearch({
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absoulte right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
               aria-label="Clear search"
             >
               <X className="h-4 w-4" />
