@@ -52,7 +52,7 @@ export default function CompareStocksPage() {
     { key: "changePercent", label: "Change %", format: (v) => formatPercent(v) },
     { key: "marketCap", label: "Market Cap", format: (v) => `$${formatCompactNumber(v)}`},
     { key: "peRatio", label: "P/E Ratio", format: (v) => v?.toFixed(2) ?? "N/A" },
-    { key: "dividend", label: "Div Yield", format: (v) => `$${v?.toFixed(2) ?? 0}%`},
+    { key: "dividend", label: "Div Yield", format: (v) => `${v?.toFixed(2) ?? 0}%`},
     { key: "week52High", label: "52W High", format: (v) => formatCurrency(v) },
     { key: "week52Low", label: "52W Low", format: (v) => formatCurrency(v) },
     { key: "volume", label: "Volume", format: (v) => formatCompactNumber(v) },
@@ -151,7 +151,7 @@ export default function CompareStocksPage() {
                           className={`px-4 py-3 text-sm ${
                             isChange
                               ? (value as number) >= 0
-                                ? "tex-green-600"
+                                ? "text-green-600"
                                 : "text-red-600"
                               : "text-gray-900 dark:text-white"
                           }`}
