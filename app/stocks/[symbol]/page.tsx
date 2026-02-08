@@ -118,6 +118,13 @@ const StockDetailPage: React.FC = () => {
             </button>
           </div>
 
+          <Link
+            href={`/stocks/compare?symbols=${symbol}`}
+            className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400"
+          >
+            Compare with other stocks →
+          </Link>
+
           {quote && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
