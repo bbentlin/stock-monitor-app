@@ -4,6 +4,7 @@ import React from "react";
 import { useHoldings } from "@/lib/hooks/useHoldings";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import SectionErrorBoundary from "@/components/SectionErrorBoundary";
+import PullToRefresh from "@/components/PullToRefresh";
 import SummaryCards from "./components/SummaryCards";
 import AddHoldingForm from "./components/AddHoldingForm";
 import PerformanceChart from "./components/PerformanceChart";
@@ -15,7 +16,7 @@ import Link from "next/link";
 import HoldingsTableWithSearch from "./components/HoldingsTableWithSearch";
 
 const DashboardPage: React.FC = () => {
-  const { holdings, loading, error, isAuthenticated, addHolding, updateHolding, removeHolding } = useHoldings();
+  const { holdings, loading, error, isAuthenticated, addHolding, updateHolding, removeHolding, refresh } = useHoldings();
 
   if (loading) {
     return (
@@ -60,56 +61,58 @@ const DashboardPage: React.FC = () => {
   const safeHoldings = holdings || [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-            Portfolio Dashboard
-          </h1>
-          <ExportHoldings holdings={safeHoldings} />
-        </div>
+    <PullToRefresh onRefresh={async () => { await refresh(); }}>
+      <div className="min-h-screen bg-gradient-to-b from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
+              Portfolio Dashboard
+            </h1>
+            <ExportHoldings holdings={safeHoldings} />
+          </div>
 
-        {/* Summary Cards */}
-        <SectionErrorBoundary sectionName="Summary">
-          <SummaryCards holdings={safeHoldings} />
-        </SectionErrorBoundary>
-
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
-          <SectionErrorBoundary sectionName="Performance/Diversification Charts">
-            <PerformanceChart holdings={safeHoldings} />
-            <DiversificationChart holdings={safeHoldings} />
+          {/* Summary Cards */}
+          <SectionErrorBoundary sectionName="Summary">
+            <SummaryCards holdings={safeHoldings} />
           </SectionErrorBoundary>
-        </div>
 
-        {/* Add Holding Form */}
-        <div className="mt-4 sm:mt-6">
-          <SectionErrorBoundary sectionName="Add Holding">
-            <AddHoldingForm onAddHolding={addHolding} />
-          </SectionErrorBoundary>
-        </div>
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
+            <SectionErrorBoundary sectionName="Performance/Diversification Charts">
+              <PerformanceChart holdings={safeHoldings} />
+              <DiversificationChart holdings={safeHoldings} />
+            </SectionErrorBoundary>
+          </div>
 
-        {/* Holdings Table */}
-        <div className="mt-4 sm:mt-6">
-          <SectionErrorBoundary sectionName="Holdings">
-            <HoldingsTableWithSearch
-            holdings={safeHoldings}
-            onRemove={removeHolding}
-            onUpdate={updateHolding}
-            />
-          </SectionErrorBoundary>
-        </div>
+          {/* Add Holding Form */}
+          <div className="mt-4 sm:mt-6">
+            <SectionErrorBoundary sectionName="Add Holding">
+              <AddHoldingForm onAddHolding={addHolding} />
+            </SectionErrorBoundary>
+          </div>
 
-        {/* Alerts and News */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
-          <SectionErrorBoundary sectionName="Price Alerts & News">
-            <PriceAlerts holdings={safeHoldings} />
-            <PortfolioNews holdings={safeHoldings} />
-          </SectionErrorBoundary>
+          {/* Holdings Table */}
+          <div className="mt-4 sm:mt-6">
+            <SectionErrorBoundary sectionName="Holdings">
+              <HoldingsTableWithSearch
+              holdings={safeHoldings}
+              onRemove={removeHolding}
+              onUpdate={updateHolding}
+              />
+            </SectionErrorBoundary>
+          </div>
+
+          {/* Alerts and News */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
+            <SectionErrorBoundary sectionName="Price Alerts & News">
+              <PriceAlerts holdings={safeHoldings} />
+              <PortfolioNews holdings={safeHoldings} />
+            </SectionErrorBoundary>
+          </div>
         </div>
       </div>
-    </div>
+    </PullToRefresh>
   );
 };
 
