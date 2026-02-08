@@ -38,7 +38,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ holdings }) => {
       color: dayChange >= 0 ? "text-green-600" : "text-red-600",
     },
     {
-      label: "Total Gain/Losss",
+      label: "Total Gain/Loss",
       value: formatCurrency(totalGain),
       subValue: formatPercent(totalGainPercent),
       color: totalGain >= 0 ? "text-green-600" : "text-red-600",
