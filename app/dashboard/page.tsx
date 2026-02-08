@@ -5,7 +5,6 @@ import { useHoldings } from "@/lib/hooks/useHoldings";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import SectionErrorBoundary from "@/components/SectionErrorBoundary";
 import SummaryCards from "./components/SummaryCards";
-import HoldingsTable from "./components/HoldingsTable";
 import AddHoldingForm from "./components/AddHoldingForm";
 import PerformanceChart from "./components/PerformanceChart";
 import DiversificationChart from "./components/DiversificationChart";
@@ -13,6 +12,7 @@ import PortfolioNews from "./components/PortfolioNews";
 import PriceAlerts from "./components/PriceAlerts";
 import ExportHoldings from "./components/ExportHoldings";
 import Link from "next/link";
+import HoldingsTableWithSearch from "./components/HoldingsTableWithSearch";
 
 const DashboardPage: React.FC = () => {
   const { holdings, loading, error, isAuthenticated, addHolding, updateHolding, removeHolding } = useHoldings();
@@ -93,7 +93,7 @@ const DashboardPage: React.FC = () => {
         {/* Holdings Table */}
         <div className="mt-4 sm:mt-6">
           <SectionErrorBoundary sectionName="Holdings">
-            <HoldingsTable
+            <HoldingsTableWithSearch
             holdings={safeHoldings}
             onRemove={removeHolding}
             onUpdate={updateHolding}
