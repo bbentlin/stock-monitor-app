@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { Holding } from "@/types";
+import { Volume2 } from "lucide-react";
+import IconButton from "@/components/IconButton";
 import { usePriceAlerts } from "@/lib/hooks/usePriceAlerts";
 import { useWebSocket } from "@/lib/context/WebSocketContext";
 import { playAlertSound, initAudioContext } from "@/lib/utils/alertSound";
@@ -123,13 +125,12 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
         </div>
         <div className="flex items-center gap-2">
           {/* Test Sound Button */}
-          <button
+          <IconButton 
+            icon={<Volume2 className="h-4 w-4" />}
+            label="Test alert sound"
             onClick={playAlertSound}
-            className="rounded-md border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-            title="Test alert sound"
-          >
-            🔊 Test
-          </button>
+            size="sm"
+          />
           {!isAdding && (
             <button
               onClick={() => setIsAdding(true)}
