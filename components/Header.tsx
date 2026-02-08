@@ -48,6 +48,14 @@ const Header = async () => {
                 </Link>
               </li>
               <li>
+                <Link
+                  href="/stocks/compare"
+                  className="hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
+                  Compare
+                </Link>
+              </li>
+              <li>
                 <ThemeToggle />
               </li>
               {session ? (
