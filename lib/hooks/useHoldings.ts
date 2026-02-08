@@ -3,7 +3,6 @@
 import useSWR from "swr";
 import { Holding } from "@/types";
 import { useSession } from "next-auth/react";
-import { refresh } from "next/cache";
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 

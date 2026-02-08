@@ -1,5 +1,3 @@
-import { diff } from "util";
-
 export const formatCurrency = (
   value: number,
   currency = "USD",
