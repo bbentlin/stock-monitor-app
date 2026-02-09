@@ -6,6 +6,7 @@ import { useStockQuote } from "@/lib/hooks/useStockQuote";
 import { useWatchlist } from "@/lib/hooks/useWatchlist";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Link from "next/link";
+import { formatCurrency, formatPercent, formatCurrency as formatCompact } from "@/lib/utils/formatters";
 
 interface StockProfile {
   name: string;
@@ -129,21 +130,21 @@ const StockDetailPage: React.FC = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Current Price</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">${quote.currentPrice.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(quote.currentPrice)}</p>
               </div>
               <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Change</p>
                 <p className={`text-2xl font-bold ${quote.change >= 0 ? "text-green-500" : "text-red-500"}`}>
-                  {quote.change >= 0 ? "+" : ""}{quote.change.toFixed(2)} ({quote.changePercent.toFixed(2)}%)
+                  {formatCurrency(quote.change)} ({formatPercent(quote.changePercent)})
                 </p>
               </div>
               <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p className="text-sm text-gray-500 dark:text-gray-400">High</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">${quote.high.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(quote.high)}</p>
               </div>
               <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
                 <p className="text-sm text-gray-500 dark:text-gray-400">Low</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">${quote.low.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(quote.low)}</p>
               </div>
             </div>
           )}
@@ -159,7 +160,7 @@ const StockDetailPage: React.FC = () => {
             <div className="mt-4">
               <p className="text-sm text-gray-500 dark:text-gray-400">Market Cap</p>
               <p className="text-gray-900 dark:text-white">
-                ${(profile.marketCapitalization / 1000).toFixed(2)}B
+                {formatCurrency(profile.marketCapitalization * 1e6, "USD", true)}
               </p>
             </div>
           )}
