@@ -26,9 +26,10 @@ export default function HoldingsTableWithSearch({
 
     // Search filter
     if (searchQuery) {
-      const query = searchQuery.toLocaleLowerCase();
+      const query = searchQuery.toLowerCase();
       result = result.filter((h) =>
-        h.symbol.toLowerCase().includes(query)
+        h.symbol.toLowerCase().includes(query) ||
+        h.name?.toLowerCase().includes(query)
       );
     }
 
