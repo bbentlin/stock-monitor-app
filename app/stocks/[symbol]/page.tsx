@@ -6,7 +6,7 @@ import { useStockQuote } from "@/lib/hooks/useStockQuote";
 import { useWatchlist } from "@/lib/hooks/useWatchlist";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Link from "next/link";
-import { formatCurrency, formatPercent, formatCurrency as formatCompact } from "@/lib/utils/formatters";
+import { formatCurrency, formatPercent } from "@/lib/utils/formatters";
 
 interface StockProfile {
   name: string;
