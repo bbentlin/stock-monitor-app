@@ -29,7 +29,7 @@ export default function CompareStocksPage() {
   const [symbols, setSymbols] = useState<string[]>(initialSymbols);
   const [newSymbol, setNewSymbol] = useState("");
 
-  const { data, isLoading } = useSWR<{ quotes: StockData[] }>(
+  const { data, isLoading, error } = useSWR<{ quotes: StockData[] }>(
     symbols.length > 0 ? `/api/stock/quotes?symbols=${symbols.join(",")}` : null,
     fetcher
   );
@@ -198,6 +198,13 @@ export default function CompareStocksPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+            <p className="text-red-700 dark:text-red-300">
+              Failed to load stock data. Please try again.
+            </p>
           </div>
         )}
       </div>
