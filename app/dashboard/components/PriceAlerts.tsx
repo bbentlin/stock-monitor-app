@@ -7,6 +7,7 @@ import IconButton from "@/components/IconButton";
 import { usePriceAlerts } from "@/lib/hooks/usePriceAlerts";
 import { useWebSocket } from "@/lib/context/WebSocketContext";
 import { playAlertSound, initAudioContext } from "@/lib/utils/alertSound";
+import { formatCurrency } from "@/lib/utils/formatters";
 
 interface PriceAlertsProps {
   holdings: Holding[];
@@ -100,13 +101,6 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
     return holding?.currentPrice;
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-    }).format(price);
-  };
-
   // Get unique symbols from holdings
   const uniqueHoldings = holdings.filter(
     (holding, index, self) => index === self.findIndex((h) => h.symbol === holding.symbol)
@@ -155,7 +149,7 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
                 <option value="">Select Symbol</option>
                 {uniqueHoldings.map((holding) => (
                   <option key={holding.symbol} value={holding.symbol}>
-                    {holding.symbol} ({formatPrice(getCurrentPrice(holding.symbol) || holding.currentPrice)})
+                    {holding.symbol} ({formatCurrency(getCurrentPrice(holding.symbol) || holding.currentPrice)})
                   </option>
                 ))}
               </select>
@@ -246,12 +240,12 @@ const PriceAlerts: React.FC<PriceAlertsProps> = ({ holdings }) => {
                     <div className="font-medium text-sm text-gray-900 dark:text-white">
                       {alert.symbol}
                       <span className="text-gray-500 dark:text-gray-400 font-normal ml-2">
-                        {alert.condition === "above" ? "⬆" : "⬇"} {formatPrice(alert.targetPrice)}
+                        {alert.condition === "above" ? "⬆" : "⬇"} {formatCurrency(alert.targetPrice)}
                       </span>
                     </div>
                     {currentPrice && (
                       <div className="text-sm text-gray-500 dark:text-gray-400">
-                        Current: {formatPrice(currentPrice)}
+                        Current: {formatCurrency(currentPrice)}
                         {isTriggered && <span className="text-green-500 ml-2">• Alert Triggered!</span>}
                       </div>
                     )}
