@@ -104,6 +104,14 @@ export default function CompareStocksPage() {
           ))}
         </div>
 
+        {error && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+            <p className="text-red-700 dark:text-red-300">
+              Failed to load stock data. Please try again.
+            </p>
+          </div>
+        )}
+
         {symbols.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-xl p-12 text-center border border-gray-200 dark:border-gray-700">
             <p className="text-gray-500 dark:text-gray-400">
@@ -198,13 +206,6 @@ export default function CompareStocksPage() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
-        {error && (
-          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
-            <p className="text-red-700 dark:text-red-300">
-              Failed to load stock data. Please try again.
-            </p>
           </div>
         )}
       </div>
