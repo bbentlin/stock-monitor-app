@@ -79,7 +79,7 @@ export default function HoldingsTableWithSearch({
 
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="p-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
+          className="p-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
           aria-label="Toggle filters"
         >
           <SlidersHorizontal className="h-5 w-5" />
