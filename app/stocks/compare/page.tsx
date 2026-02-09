@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { Plus, X, TrendingUp, TrendingDown } from "lucide-react";
 import { formatCurrency, formatPercent, formatCompactNumber } from "@/lib/utils/formatters";
+import { Skeleton } from "@/components/Skeleton";
 
 interface StockData {
   symbol: string;
@@ -110,8 +111,33 @@ export default function CompareStocksPage() {
             </p>
           </div>
         ) : isLoading ? (
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-12 text-center border border-gray-200 dark:border-gray-700">
-            <p className="text-gray-500">Loading stock data...</p>
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+              <Skeleton className="h-6 w-32" />
+            </div>
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="px-4 py-3"><Skeleton className="h-4 w-16" /></th>
+                  {symbols.map((s) => (
+                    <th key={s} className="px-4 py-3">
+                      <Skeleton className="h-5 w-16 mb-1" />
+                      <Skeleton className="h-3 w-24" />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                  <tr key={i} className="border-b border-gray-100 dark:border-gray-700">
+                    <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
+                    {symbols.map((s) => (
+                      <td key={s} className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         ) : (
           <div className="overflow-x-auto">
