@@ -81,6 +81,8 @@ const DashboardPage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
             <SectionErrorBoundary sectionName="Performance/Diversification Charts">
               <PerformanceChart holdings={safeHoldings} />
+            </SectionErrorBoundary>
+            <SectionErrorBoundary>
               <DiversificationChart holdings={safeHoldings} />
             </SectionErrorBoundary>
           </div>
@@ -107,6 +109,8 @@ const DashboardPage: React.FC = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-4 sm:mt-6">
             <SectionErrorBoundary sectionName="Price Alerts & News">
               <PriceAlerts holdings={safeHoldings} />
+            </SectionErrorBoundary>
+            <SectionErrorBoundary>
               <PortfolioNews holdings={safeHoldings} />
             </SectionErrorBoundary>
           </div>
