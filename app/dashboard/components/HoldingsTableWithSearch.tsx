@@ -93,7 +93,7 @@ export default function HoldingsTableWithSearch({
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="ml-2 border rounded px-2 py-1 text-sm dark:bg-gray-700 dark:border-gray-600"
+              className="ml-2 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="symbol">Symbol</option>
               <option value="value">Value</option>
@@ -105,7 +105,7 @@ export default function HoldingsTableWithSearch({
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
-              className="ml-2 border rounded px-2 py-1 text-sm dark:bg-gray-700 dark:border-gray-600"
+              className="ml-2 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="asc">Ascending</option>
               <option value="desc">Descending</option>
