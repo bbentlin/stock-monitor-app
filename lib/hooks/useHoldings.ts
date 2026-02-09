@@ -46,7 +46,7 @@ export const useHoldings = () => {
       mutate();
     } catch (error) {
       mutate(); // Rollback
-      throw Error;
+      throw error;
     }
   };
 
