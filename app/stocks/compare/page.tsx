@@ -73,7 +73,7 @@ export default function CompareStocksPage() {
             onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
             onKeyDown={(e) => e.key === "Enter" && addSymbol()}
             placeholder="Enter symbol (e.g., AAPL)"
-            className="flex-1 max-w-xs px-4 py-2 border rounded-lg dark:bg-gray-800 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="flex-1 max-w-xs px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
             maxLength={5}
           />
           <button
