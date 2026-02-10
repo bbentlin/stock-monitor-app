@@ -1,28 +1,59 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { Holding } from "@/types";
 import { formatCurrency, formatPercent } from "@/lib/utils/formatters";
+import { useWebSocket } from "@/lib/context/WebSocketContext";
 
 interface SummaryCardsProps {
   holdings: Holding[];
 }
 
 const SummaryCards: React.FC<SummaryCardsProps> = ({ holdings }) => {
-  const totalValue = holdings.reduce((sum, h) => sum + h.value, 0);
-  const totalCost = holdings.reduce(
-    (sum, h) => sum + h.shares * h.purchasePrice,
-    0
-  );
+  const { prices: wsPrices, subscribe, unsubscribe } = useWebSocket();
+
+  // Subscribe to WebSocket for live prices
+  useEffect(() => {
+    const symbols = [...new Set(holdings.map((h) => h.symbol))];
+    if (symbols.length > 0) {
+      subscribe(symbols);
+    }
+    return () => {
+      if (symbols.length > 0) {
+        unsubscribe(symbols);
+      }
+    };
+  }, [holdings, subscribe, unsubscribe]);
+
+  const { totalValue, totalCost, dayChange } = useMemo(() => {
+    let value = 0;
+    let cost = 0;
+    let change = 0;
+
+    holdings.forEach((h) => {
+      const livePrice = wsPrices[h.symbol] ?? h.currentPrice ?? h.purchasePrice;
+      const holdingValue = h.shares * livePrice;
+      const holdingCost = h.shares * h.purchasePrice;
+
+      value += holdingValue;
+      cost += holdingCost;
+
+      // Day change: use the 'change' field if available (price change today),
+      // otherwise fall back to difference between live price and currentPrice from API
+      if (h.change !== undefined && h.change !== null) {
+        change += h.change * h.shares;
+      } else if (wsPrices[h.symbol] && h.currentPrice) {
+        // Approximate: difference between WS live price and last API-fetched price
+        change += (wsPrices[h.symbol] - h.currentPrice) * h.shares;
+      }
+    });
+
+    return { totalValue: value, totalCost: cost, dayChange: change };
+  }, [holdings, wsPrices]);
+
   const totalGain = totalValue - totalCost;
   const totalGainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
-
-  const dayChange = holdings.reduce(
-    (sum, h) => sum + (h.change ?? 0) * h.shares,
-    0
-  );
-  const dayChangePercent = 
-    totalValue > 0 ? (dayChange / (totalValue - dayChange)) * 100 : 0;
+  const dayChangePercent = totalValue - dayChange > 0 ? (dayChange / (totalValue - dayChange)) * 100 : 0;
 
   const cards = [
     {
@@ -56,7 +87,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ holdings }) => {
       {cards.map((card) => (
         <div
           key={card.label}
-          className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700"
+          className="bg-white dark:bg-gray-800 rounded-xl p-6 border-gray-200 dark:border-gray-700"
         >
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
             {card.label}
