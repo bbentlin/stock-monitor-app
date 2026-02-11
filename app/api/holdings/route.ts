@@ -2,6 +2,39 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 
+const FINNHUB_KEY = process.env.FINNHUB_API_KEY;
+
+// Simple in-memory cache for quotes
+const quoteCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 60 * 1000; // 1 minute
+
+async function fetchQuote(symbol: string) {
+  const cached = quoteCache.get(symbol);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  
+  try {
+    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_KEY}`);
+    const data = await res.json();
+
+    if (data.c && data.c > 0) {
+      const quote = {
+        currentPrice: data.c,
+        change: data.d,
+        changePercent: data.dp,
+        previousClose: data.pc,
+      };
+      quoteCache.set(symbol, { data: quote, timestamp: Date.now() });
+      return quote;
+    }
+  } catch (err) {
+    console.error(`Failed to fetch quote for ${symbol}:`, err);
+  }
+
+  return null;
+}
+
 export async function GET() {
   const session = await auth();
 
@@ -12,10 +45,47 @@ export async function GET() {
   try {
     const holdings = await prisma.holding.findMany({
       where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "desc" } 
     });
 
-    return NextResponse.json({ holdings });
+    // Get unique symbols
+    const symbols = [...new Set(holdings.map((h) => h.symbol))];
+
+    // Fetch live quotes for all symbols
+    const quotes = await Promise.all(
+      symbols.map(async (symbol) => {
+        const quote = await fetchQuote(symbol);
+        return { symbol, quote };
+      })
+    );
+
+    const quoteMap = new Map(
+      quotes
+        .filter((q) => q.quote !== null)
+        .map((q) => [q.symbol, q.quote])
+    );
+
+    // Enrich holdings with live data
+    const enrichedHoldings = holdings.map((h) => {
+      const quote = quoteMap.get(h.symbol);
+      const currentPrice = quote?.currentPrice ?? h.currentPrice ?? h.purchasePrice;
+      const change = quote?.change ?? 0;
+      const value = h.shares * currentPrice;
+      const costBasis = h.shares * h.purchasePrice;
+      const gainLoss = value - costBasis;
+      const gainLossPercent = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0;
+
+      return {
+        ...h,
+        currentPrice,
+        change,
+        value,
+        gainLoss,
+        gainLossPercent,
+      };
+    });
+
+    return NextResponse.json({ holdings: enrichedHoldings });
   } catch (error) {
     console.error("Error fetching holdings:", error);
     return NextResponse.json({ error: "Failed to fetch holdings" }, { status: 500 });
@@ -32,23 +102,33 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
+    // Fetch current price for the new holding
+    const quote = await fetchQuote(body.symbol);
+    const currentPrice = quote?.currentPrice ?? body.purchasePrice;
+    const value = body.shares * currentPrice;
+    const costBasis = body.shares * body.purchasePrice;
+    const gainLoss = value - costBasis;
+    const gainLossPercent = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0;
+
     const holding = await prisma.holding.create({
       data: {
         userId: session.user.id,
-        symbol: body.symbol,
+        symbol: body.symbol.toUpperCase(),
         name: body.name,
         shares: body.shares,
         purchasePrice: body.purchasePrice,
-        currentPrice: body.currentPrice,
-        value: body.value,
-        gainLoss: body.gainLoss,
-        gainLossPercent: body.gainLossPercent,
-        lotId: body.lotId,
-        purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : null,
+        currentPrice,
+        value,
+        gainLoss,
+        gainLossPercent,
+        lotId: body.lotId ?? `lot-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
       },
     });
 
-    return NextResponse.json({ success: true, holding });
+    return NextResponse.json({
+      success: true,
+      holding: { ...holding, change: quote?.change ?? 0 },
+    });
   } catch (error) {
     console.error("Error adding holding:", error);
     return NextResponse.json({ error: "Failed to add holding" }, { status: 500 });
@@ -76,7 +156,7 @@ export async function PATCH(request: Request) {
     });
 
     if (!existing) {
-      return NextResponse.json({ error: "Holding not found" }, { status: 404 });
+      return NextResponse.json({ error: "Holding not found" }, { status: 400 });
     }
 
     // Calculate updated values
@@ -96,7 +176,7 @@ export async function PATCH(request: Request) {
         value: newValue,
         gainLoss: newGainLoss,
         gainLossPercent: newGainLossPercent,
-      },
+      }
     });
 
     return NextResponse.json({ success: true, holding });
@@ -118,7 +198,7 @@ export async function DELETE(request: Request) {
     const lotId = searchParams.get("lotId");
 
     if (!lotId) {
-      return NextResponse.json({ error: "lotId is required" }, { status: 400 });
+      return NextResponse.json({ error: "lotId is required "}, { status: 400 });
     }
 
     // Verify the holding belongs to this user
@@ -140,3 +220,4 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Failed to remove holding" }, { status: 500 });
   }
 }
+
