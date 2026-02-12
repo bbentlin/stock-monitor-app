@@ -87,7 +87,7 @@ const SummaryCards: React.FC<SummaryCardsProps> = ({ holdings }) => {
       {cards.map((card) => (
         <div
           key={card.label}
-          className="bg-white dark:bg-gray-800 rounded-xl p-6 border-gray-200 dark:border-gray-700"
+          className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700"
         >
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
             {card.label}

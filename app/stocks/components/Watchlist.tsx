@@ -68,7 +68,7 @@ const Watchlist: React.FC<WatchlistProps> = ({ stocks, onRemove }) => {
 
         setQuoteData((prev) => ({ ...prev, ...newQuoteData }));
       } catch (err) {
-        console.error("Failed to fetch watchlis quotes", err);
+        console.error("Failed to fetch watchlist quotes", err);
       }
     };
 

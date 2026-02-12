@@ -70,7 +70,7 @@ export async function DELETE(request: Request) {
   const session = await auth();
 
   if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 400 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
