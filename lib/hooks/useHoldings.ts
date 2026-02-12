@@ -58,10 +58,8 @@ export const useHoldings = () => {
     );
 
     try {
-      const response = await fetch("/api/holdings", {
+      const response = await fetch(`/api/holdings?lotId=${encodeURIComponent(lotId)}`, {
         method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lotId }),
       });
 
       if (!response.ok) throw new Error("Failed to remove holding");
