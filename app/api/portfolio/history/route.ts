@@ -38,6 +38,18 @@ export async function POST(request: Request) {
   }
 
   try {
+    // Verify user exists
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found. Please sign out and sign back in." },
+        { status: 404 }
+      );
+    }
+
     const { totalValue, totalCost } = await request.json();
 
     // Only save one snapshot per day

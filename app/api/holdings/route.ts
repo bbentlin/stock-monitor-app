@@ -102,7 +102,26 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
 
-    // Fetch current price for the new holding
+    // Validate required fields
+    if (!body.symbol || !body.name || !body.shares || !body.purchasePrice) {
+      return NextResponse.json(
+        { error: "Missing required fields: symbol, name, shares, purchasePrice" },
+        { status: 400 }
+      );
+    }
+
+    // Verify user exists in database
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "User not found. Please sign out and sign back in." },
+        { status: 404 }
+      );
+    }
+
     const quote = await fetchQuote(body.symbol);
     const currentPrice = quote?.currentPrice ?? body.purchasePrice;
     const value = body.shares * currentPrice;
@@ -110,28 +129,46 @@ export async function POST(request: Request) {
     const gainLoss = value - costBasis;
     const gainLossPercent = costBasis > 0 ? (gainLoss / costBasis) * 100 : 0;
 
+    console.log("Creating holding with:", {
+      userId: session.user.id,
+      symbol: body.symbol.toUpperCase(),
+      name: body.name,
+      shares: body.shares,
+      purchasePrice: body.purchasePrice,
+      currentPrice,
+      value,
+      gainLoss,
+      gainLossPercent,
+    });
+
     const holding = await prisma.holding.create({
       data: {
         userId: session.user.id,
         symbol: body.symbol.toUpperCase(),
         name: body.name,
-        shares: body.shares,
-        purchasePrice: body.purchasePrice,
+        shares: parseFloat(body.shares),
+        purchasePrice: parseFloat(body.purchasePrice),
         currentPrice,
         value,
         gainLoss,
         gainLossPercent,
-        lotId: body.lotId ?? `lot-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+        purchaseDate: body.purchaseDate ? new Date(body.purchaseDate) : null,
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      holding: { ...holding, change: quote?.change ?? 0 },
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        holding: { ...holding, change: quote?.change ?? 0 },
+      },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Error adding holding:", error);
-    return NextResponse.json({ error: "Failed to add holding" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to add holding", details: String(error) },
+      { status: 500 }
+    );
   }
 }
 

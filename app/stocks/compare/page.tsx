@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { Plus, X, TrendingUp, TrendingDown } from "lucide-react";
 import { formatCurrency, formatPercent, formatCompactNumber } from "@/lib/utils/formatters";
 import { Skeleton } from "@/components/Skeleton";
+import { useStockSearch } from "@/lib/hooks/useStockSearch";
 
 interface StockData {
   symbol: string;
@@ -28,17 +29,40 @@ export default function CompareStocksPage() {
   const initialSymbols = searchParams.get("symbols")?.split(",").filter(Boolean) ?? [];
   const [symbols, setSymbols] = useState<string[]>(initialSymbols);
   const [newSymbol, setNewSymbol] = useState("");
+  const [showSearch, setShowSearch] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const { results, loading: searchLoading, searchStocks } = useStockSearch();
 
   const { data, isLoading, error } = useSWR<{ quotes: StockData[] }>(
-    symbols.length > 0 ? `/api/stock/quotes?symbols=${symbols.join(",")}` : null,
+    symbols.length > 0 ? `/api/stock/quotes?symbols=${symbols.join(",")}&detailed=true` : null,
     fetcher
   );
 
-  const addSymbol = () => {
-    const symbol = newSymbol.toUpperCase().trim();
-    if (symbol && !symbols.includes(symbol) && symbols.length < 5) {
-      setSymbols([...symbols, symbol]);
+  // Reset highlighted index when results change
+  useEffect(() => {
+    setHighlightedIndex(-1);
+  }, [results]);
+
+  // Scroll highlighted item into view
+  useEffect(() => {
+    if (highlightedIndex >= 0 && dropdownRef.current) {
+      const items = dropdownRef.current.querySelectorAll("button");
+      if (items[highlightedIndex]) {
+        items[highlightedIndex].scrollIntoView({ block: "nearest" });
+      }
+    }
+  }, [highlightedIndex]);
+
+  const addSymbol = (symbol?: string) => {
+    const sym = (symbol ?? newSymbol).toUpperCase().trim();
+    if (sym && !symbols.includes(sym) && symbols.length < 5) {
+      setSymbols([...symbols, sym]);
       setNewSymbol("");
+      setShowSearch(false);
+      setHighlightedIndex(-1);
     }
   };
 
@@ -46,14 +70,71 @@ export default function CompareStocksPage() {
     setSymbols(symbols.filter((s) => s !== symbol));
   };
 
-  const stocks = data?.quotes ?? [];
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNewSymbol(value);
+    setHighlightedIndex(-1);
+    if (value.length >= 2) {
+      setShowSearch(true);
+      searchStocks(value);
+    } else {
+      setShowSearch(false);
+    }
+  };
 
-  const metrics: { key: keyof StockData; label: string; format: (v: any) => string}[] = [
+  const handleSelectStock = (symbol: string) => {
+    addSymbol(symbol);
+    inputRef.current?.focus();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showSearch && results.length > 0) {
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setHighlightedIndex((prev) =>
+            prev < results.length - 1 ? prev + 1 : prev
+          );
+          return;
+        case "ArrowUp":
+          e.preventDefault();
+          setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : prev));
+          return;
+        case "Escape":
+          setShowSearch(false);
+          setHighlightedIndex(-1);
+          return;
+        case "Tab":
+          if (highlightedIndex >= 0 && results[highlightedIndex]) {
+            e.preventDefault();
+            handleSelectStock(results[highlightedIndex].symbol);
+          }
+          return;
+        case "Enter":
+          e.preventDefault();
+          if (highlightedIndex >= 0 && results[highlightedIndex]) {
+            handleSelectStock(results[highlightedIndex].symbol);
+          } else {
+            addSymbol();
+          }
+          return;
+      }
+    }
+
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addSymbol();
+    }
+  };
+
+  const stocks: StockData[] = Array.isArray(data?.quotes) ? data.quotes : [];
+
+  const metrics: { key: keyof StockData; label: string; format: (v: any) => string }[] = [
     { key: "price", label: "Price", format: (v) => formatCurrency(v) },
     { key: "changePercent", label: "Change %", format: (v) => formatPercent(v) },
-    { key: "marketCap", label: "Market Cap", format: (v) => `$${formatCompactNumber(v)}`},
+    { key: "marketCap", label: "Market Cap", format: (v) => `$${formatCompactNumber(v)}` },
     { key: "peRatio", label: "P/E Ratio", format: (v) => v?.toFixed(2) ?? "N/A" },
-    { key: "dividend", label: "Div Yield", format: (v) => `${v?.toFixed(2) ?? 0}%`},
+    { key: "dividend", label: "Div Yield", format: (v) => `${v?.toFixed(2) ?? 0}%` },
     { key: "week52High", label: "52W High", format: (v) => formatCurrency(v) },
     { key: "week52Low", label: "52W Low", format: (v) => formatCurrency(v) },
     { key: "volume", label: "Volume", format: (v) => formatCompactNumber(v) },
@@ -67,17 +148,85 @@ export default function CompareStocksPage() {
         </h1>
 
         <div className="flex gap-2 mb-6">
-          <input
-            type="text"
-            value={newSymbol}
-            onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-            onKeyDown={(e) => e.key === "Enter" && addSymbol()}
-            placeholder="Enter symbol (e.g., AAPL)"
-            className="flex-1 max-w-xs px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-            maxLength={5}
-          />
+          <div className="relative flex-1 max-w-xs">
+            <input
+              ref={inputRef}
+              type="text"
+              value={newSymbol}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onBlur={() => {
+                setTimeout(() => setShowSearch(false), 200);
+              }}
+              onFocus={() => {
+                if (newSymbol.length >= 2 && results.length > 0) {
+                  setShowSearch(true);
+                }
+              }}
+              placeholder="Search stocks (e.g., AAPL)"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              maxLength={10}
+              autoComplete="off"
+              role="combobox"
+              aria-expanded={showSearch}
+              aria-haspopup="listbox"
+              aria-autocomplete="list"
+              aria-activedescendant={
+                highlightedIndex >= 0 ? `compare-option-${highlightedIndex}` : undefined
+              }
+            />
+            {showSearch && results.length > 0 && (
+              <div
+                ref={dropdownRef}
+                className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto"
+                role="listbox"
+              >
+                {results.map((stock, index) => {
+                  const alreadyAdded = symbols.includes(stock.symbol);
+                  return (
+                    <button
+                      key={stock.symbol}
+                      id={`compare-option-${index}`}
+                      type="button"
+                      onClick={() => handleSelectStock(stock.symbol)}
+                      onMouseEnter={() => setHighlightedIndex(index)}
+                      disabled={alreadyAdded || symbols.length >= 5}
+                      className={`w-full px-4 py-2 text-left text-gray-900 dark:text-white transition-colors ${
+                        alreadyAdded
+                          ? "opacity-50 cursor-not-allowed"
+                          : index === highlightedIndex
+                          ? "bg-blue-100 dark:bg-blue-600"
+                          : "hover:bg-gray-100 dark:hover:bg-gray-600"
+                      }`}
+                      role="option"
+                      aria-selected={index === highlightedIndex}
+                    >
+                      <span className="font-medium">{stock.symbol}</span>
+                      <span className="text-gray-500 dark:text-gray-400 ml-2 text-sm">
+                        {stock.name}
+                      </span>
+                      {alreadyAdded && (
+                        <span className="text-blue-500 ml-2 text-xs font-medium">Added</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            {searchLoading && (
+              <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg p-3 text-center text-gray-500 dark:text-gray-400 text-sm">
+                Searching...
+              </div>
+            )}
+          </div>
           <button
-            onClick={addSymbol}
+            onClick={() => {
+              if (highlightedIndex >= 0 && results[highlightedIndex]) {
+                handleSelectStock(results[highlightedIndex].symbol);
+              } else {
+                addSymbol();
+              }
+            }}
             disabled={symbols.length >= 5 || !newSymbol.trim()}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
           >
@@ -191,9 +340,9 @@ export default function CompareStocksPage() {
                           }`}
                         >
                           <span className="flex items-center gap-1">
-                            {isChange && 
+                            {isChange &&
                               (value as number) >= 0 ? (
-                                <TrendingUp className="h-4 w-4" /> 
+                                <TrendingUp className="h-4 w-4" />
                               ) : isChange ? (
                                 <TrendingDown className="h-4 w-4" />
                               ) : null}

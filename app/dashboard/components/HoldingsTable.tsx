@@ -188,7 +188,7 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove, onUpd
   }
 
   return (
-    <>
+    <div>
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -460,25 +460,28 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove, onUpd
                           type="number"
                           value={editForm.shares}
                           onChange={(e) => setEditForm({ ...editForm, shares: e.target.value })}
-                          className="w-24 px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white text-sm text-right"
+                          className="w-full px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white text-sm text-right"
                           min="0"
                           step="any"
                         />
                       </td>
-                      <td className="px-4 py-4">
+                      <td className="px-4 py-4 text-right">
                         <input
                           type="number"
                           value={editForm.purchasePrice}
                           onChange={(e) =>
                             setEditForm({ ...editForm, purchasePrice: e.target.value })
                           }
-                          className="w-24 px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white text-sm text-right"
+                          className="w-full px-2 py-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-900 dark:text-white text-sm text-right"
                           min="0"
                           step="0.01"
                         />
                       </td>
                       <td className="px-4 py-4 text-right text-gray-500 dark:text-gray-400">
                         {formatCurrency(livePrice)}
+                      </td>
+                      <td>
+                        {formatCurrency(liveValue)}
                       </td>
                       <td className="px-4 py-4 text-right text-gray-500 dark:text-gray-400">—</td>
                       <td className="px-4 py-4 text-right text-gray-500 dark:text-gray-400">—</td>
@@ -588,18 +591,20 @@ const HoldingsTable: React.FC<HoldingsTableProps> = ({ holdings, onRemove, onUpd
           </table>
         </div>
       </div>
-
-      <ConfirmModal
-        isOpen={deleteTarget !== null}
-        title="Remove Holding"
-        message={`Are you sure you want to remove ${deleteTarget?.symbol} from your portfolio?`}
-        confirmText="Remove"
-        cancelText="Cancel"
-        variant="danger"
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setDeleteTarget(null)}
-      />
-    </>
+      
+      {deleteTarget !== null && (
+        <ConfirmModal
+          isOpen={deleteTarget !== null}
+          title="Remove Holding"
+          message={`Are you sure you want to remove ${deleteTarget?.symbol} from your portfolio?`}
+          confirmText="Remove"
+          cancelText="Cancel"
+          variant="danger"
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+    </div>
   );
 };
 

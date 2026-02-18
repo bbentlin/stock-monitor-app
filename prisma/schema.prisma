@@ -1,5 +1,5 @@
 datasource db {
-  provider = "sqlite" 
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -16,11 +16,11 @@ model User {
   password      String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-  
-  accounts      Account[]
-  sessions      Session[]
-  holdings      Holding[]
-  watchlist     WatchlistStock[]
+
+  accounts           Account[]
+  sessions           Session[]
+  holdings           Holding[]
+  watchlist          WatchlistStock[]
   portfolioSnapshots PortfolioSnapshot[]
 }
 
@@ -58,11 +58,11 @@ model Holding {
   name            String
   shares          Float
   purchasePrice   Float
-  currentPrice    Float
-  value           Float
-  gainLoss        Float
-  gainLossPercent Float
-  lotId           String
+  currentPrice    Float     @default(0)
+  value           Float     @default(0)
+  gainLoss        Float     @default(0)
+  gainLossPercent Float     @default(0)
+  lotId           String    @unique @default(cuid())
   purchaseDate    DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -70,7 +70,7 @@ model Holding {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
-  @@index([lotId])
+  @@index([symbol])
 }
 
 model WatchlistStock {
@@ -78,8 +78,8 @@ model WatchlistStock {
   userId    String
   symbol    String
   name      String
-  type      String
-  region    String
+  type      String   @default("stock")
+  region    String   @default("US")
   createdAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -89,11 +89,12 @@ model WatchlistStock {
 }
 
 model PortfolioSnapshot {
-  id        String   @id @default(cuid())
-  userId    String
+  id         String   @id @default(cuid())
+  userId     String
   totalValue Float
   totalCost  Float
-  date      DateTime @default(now())
+  dayChange  Float    @default(0)
+  date       DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
