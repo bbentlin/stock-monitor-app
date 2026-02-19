@@ -89,7 +89,7 @@ export default function SessionGuard() {
     }
 
     // Mark this tab as actively guarded
-    localStorage.setItem("session-guard-active", "true");
+    sessionStorage.setItem("session-guard-active", "true");
   }, [isAuthenticated]);
 
   return null;
