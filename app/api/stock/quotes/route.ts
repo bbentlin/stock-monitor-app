@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
               changePercent: data.dp,
             };
             quotes[symbol] = quoteData;
-            quoteCache.set(symbol, { data: quoteData, timestamp: now });
+            quoteCache.set(cachePrefix + symbol, { data: quoteData, timestamp: now });
           }
         } catch (err) {
           console.error(`Error fetching quote for ${symbol}:`, err);
