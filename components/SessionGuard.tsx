@@ -74,13 +74,22 @@ export default function SessionGuard() {
       const elapsed = Date.now() - parseInt(lastHeartbeat, 10);
 
       if (elapsed > HEARTBEAT_TIMEOUT) {
-        // The previous session's heartbeat expired - the tab was closed
-        // Invalitdate the server session
-        fetch("/api/auth/signout-beacon", { method: "POST" }).then(() => {
-          signOut({ callbackUrl: "/auth/signin" });
-        });
+        // Only invalidate if we know this was an active session that went stale,
+        // not a fresh login. Check sessionStorage (cleared on tab close)
+        const wasActiveTab = sessionStorage.getItem("session-guard-active");
+        if (wasActiveTab) {
+          fetch("/api/auth/signout-beacon", { method: "POST"}).then(() => {
+            signOut({ callbackUrl: "/auth/signin" });
+          });
+          return;
+        }
+        // Fresh tab/login - just clear the stale heartbeat
+        localStorage.removeItem(HEARTBEAT_KEY);
       }
     }
+
+    // Mark this tab as actively guarded
+    localStorage.setItem("session-guard-active", "true");
   }, [isAuthenticated]);
 
   return null;
