@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import { Providers } from "@/components/Providers";
 import WebSocketStatus from "@/components/WebSocketStatus";
 import "@/app/globals.css";
+import SessionGuard from "@/components/SessionGuard";
 
 export const metadata: Metadata = {
   title: "Stock Monitor | Portfolio Tracker",
@@ -56,6 +57,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       </head>
       <body className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white">
         <Providers>
+          <SessionGuard />
           <div className="flex flex-col min-h-screen">
             <Header />
             <main className="flex-grow">{children}</main>
