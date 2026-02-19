@@ -262,7 +262,7 @@ export const WebSocketProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (reconnectTimeoutRef) clearTimeout(reconnectTimeoutRef.current);
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
       if (fetchDebounceRef.current) clearTimeout(fetchDebounceRef.current);
       if (wsRef.current) wsRef.current.close();
     };

@@ -7,6 +7,7 @@ import { Plus, X, TrendingUp, TrendingDown } from "lucide-react";
 import { formatCurrency, formatPercent, formatCompactNumber } from "@/lib/utils/formatters";
 import { Skeleton } from "@/components/Skeleton";
 import { useStockSearch } from "@/lib/hooks/useStockSearch";
+import { Suspense } from "react";
 
 interface StockData {
   symbol: string;
@@ -24,7 +25,7 @@ interface StockData {
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
 
-export default function CompareStocksPage() {
+function CompareStocksContent() {
   const searchParams = useSearchParams();
   const initialSymbols = searchParams.get("symbols")?.split(",").filter(Boolean) ?? [];
   const [symbols, setSymbols] = useState<string[]>(initialSymbols);
@@ -359,5 +360,13 @@ export default function CompareStocksPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function CompareStocksPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-center">Loading comparison...</div>}>
+      <CompareStocksContent />
+    </Suspense>
   );
 }
