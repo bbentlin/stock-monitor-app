@@ -1,10 +1,10 @@
-import React from "react";
 import Link from "next/link";
 import { auth, signOut } from "@/lib/auth";
 import ThemeToggle from "./ThemeToggle";
 import MobileNav from "./MobileNav";
 import HeaderStats from "./HeaderStats";
 import MarketStatus from "./MarketStatus";
+import SignOutButton from "./SignOutButton";
 
 const Header = async () => {
   let session = null;
@@ -12,7 +12,6 @@ const Header = async () => {
     session = await auth();
   } catch (error) {
     console.error("Auth error in Header:", error);
-    // Continue rendering with no session — don't crash the whole site
   }
 
   return (
@@ -27,7 +26,6 @@ const Header = async () => {
             >
               📈 Stock Monitor
             </Link>
-            {/* Quick Stats - only visible on larger screens */}
             <HeaderStats />
           </div>
 
@@ -76,18 +74,7 @@ const Header = async () => {
                         await signOut({ redirectTo: "/" });
                       }}
                     >
-                      <button
-                        type="submit"
-                        onClick={() => {
-                          // Signal to SessionGuard that sign-out is intentional
-                          try {
-                            localStorage.setItem("session-signout-initiated", Date.now().toString());
-                          } catch {}
-                        }}
-                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Sign Out
-                      </button>
+                      <SignOutButton />
                     </form>
                   </li>
                 </>
