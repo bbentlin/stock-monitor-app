@@ -7,7 +7,13 @@ import HeaderStats from "./HeaderStats";
 import MarketStatus from "./MarketStatus";
 
 const Header = async () => {
-  const session = await auth();
+  let session = null;
+  try {
+    session = await auth();
+  } catch (error) {
+    console.error("Auth error in Header:", error);
+    // Continue rendering with no session — don't crash the whole site
+  }
 
   return (
     <header className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
