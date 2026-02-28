@@ -105,9 +105,10 @@ const MobileNav: React.FC<MobileNavProps> = ({ userEmail, isAuthenticated }) => 
                 </p>
                 <button 
                   onClick={() => {
-                    signOut({ callbackUrl: "/" });
-                    closeMenu();
-                  }}
+                          try {
+                            localStorage.setItem("session-signout-initiated", Date.now().toString());
+                          } catch {}
+                        }}
                   className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-red-600 hover:bg-red-700 text-white transition-colors"
                 >
                   <span>🚪</span>

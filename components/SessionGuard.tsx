@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { signOut, useSession } from "next-auth/react";
 
 const HEARTBEAT_KEY = "session-heartbeat";
+const SIGNOUT_KEY = "session-signout-initiated";
 const HEARTBEAT_INTERVAL = 3000;
 const HEARTBEAT_TIMEOUT = 6000;
 
@@ -15,6 +16,10 @@ export default function SessionGuard() {
 
   const startHeartbeat = useCallback(() => {
     localStorage.setItem(HEARTBEAT_KEY, Date.now().toString());
+
+    if (heartbeatRef.current) {
+      clearInterval(heartbeatRef.current);
+    }
 
     heartbeatRef.current = setInterval(() => {
       localStorage.setItem(HEARTBEAT_KEY, Date.now().toString());
@@ -33,18 +38,29 @@ export default function SessionGuard() {
     if (status === "unauthenticated") {
       stopHeartbeat();
       localStorage.removeItem(HEARTBEAT_KEY);
+      localStorage.removeItem(SIGNOUT_KEY);
       logoutCalledRef.current = false;
     }
   }, [status, stopHeartbeat]);
+
+  // Safe sign-out that checks if a sign-out is already in progress
+  const safeSignOut = useCallback(() => {
+    // Check if a server-action sign-out was already initiated
+    const signoutInitiated = localStorage.getItem(SIGNOUT_KEY);
+    if (signoutInitiated || logoutCalledRef.current) {
+      return;
+    }
+
+    logoutCalledRef.current = true;
+    localStorage.setItem(SIGNOUT_KEY, Date.now().toString());
+    signOut({ callbackUrl: "/auth/signin" });
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
     const handleOffline = () => {
-      if (!logoutCalledRef.current) {
-        logoutCalledRef.current = true;
-        signOut({ callbackUrl: "/auth/signin" });
-      }
+      safeSignOut();
     };
 
     window.addEventListener("offline", handleOffline);
@@ -55,6 +71,11 @@ export default function SessionGuard() {
       if (document.visibilityState === "hidden") {
         stopHeartbeat();
       } else {
+        // Check if sign-out happened while tab was hidden
+        const signoutInitiated = localStorage.getItem(SIGNOUT_KEY);
+        if (signoutInitiated) {
+          return; // Don't restart heartbeat, sign-out is happening
+        }
         startHeartbeat();
       }
     };
@@ -66,10 +87,14 @@ export default function SessionGuard() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       stopHeartbeat();
     };
-  }, [isAuthenticated, startHeartbeat, stopHeartbeat]);
+  }, [isAuthenticated, startHeartbeat, stopHeartbeat, safeSignOut]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
+
+    // If a sign-out is already in progress, don't do anything
+    const signoutInitiated = localStorage.getItem(SIGNOUT_KEY);
+    if (signoutInitiated) return;
 
     const lastHeartbeat = localStorage.getItem(HEARTBEAT_KEY);
 
@@ -79,12 +104,7 @@ export default function SessionGuard() {
       if (elapsed > HEARTBEAT_TIMEOUT) {
         const wasActiveTab = sessionStorage.getItem("session-guard-active");
         if (wasActiveTab) {
-          if (!logoutCalledRef.current) {
-            logoutCalledRef.current = true;
-            fetch("/api/auth/signout-beacon", { method: "POST" }).then(() => {
-              signOut({ callbackUrl: "/auth/signin" });
-            });
-          }
+          safeSignOut();
           return;
         }
         localStorage.removeItem(HEARTBEAT_KEY);
@@ -92,7 +112,7 @@ export default function SessionGuard() {
     }
 
     sessionStorage.setItem("session-guard-active", "true");
-  }, [isAuthenticated]);
+  }, [isAuthenticated, safeSignOut]);
 
   return null;
 }
