@@ -11,11 +11,12 @@ export const metadata: Metadata = {
   title: "Stock Monitor | Portfolio Tracker",
   description: "Track your stock portfolio with real-time prices, performance charts, and price alerts.",
   keywords: ["stocks", "portfolio", "tracker", "investments", "real-time"],
-  authors:[{ name: "Ben Bentlin" }],
+  authors: [{ name: "Ben Bentlin" }],
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
+      { url: "/favicon.ico", sizes: "32x32" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
